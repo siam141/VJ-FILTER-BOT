@@ -1413,35 +1413,36 @@ async def purge_requests(client, message):
 
 from pyrogram import Client, filters
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
-from info import auth_users
+from pyrogram.errors import UserIsBlocked, PeerIdInvalid
+import urllib.parse
 
-LOG_CHANNEL = -1002589776901  # তোর log/admin চ্যানেল আইডি
-ADMIN_ID = 7862181538         # তোর টেলিগ্রাম ID
+LOG_CHANNEL = -1002589776901
+ADMIN_ID = 7862181538
 
-# মুভি রিকুয়েস্ট করার কমান্ড
 @Client.on_message(filters.command("requestbot") & filters.private)
 async def request_movie(client: Client, message: Message):
     if len(message.command) < 2:
         return await message.reply("দয়া করে `/requestbot মুভি নাম` এর মত করে পাঠান।")
 
     movie_name = " ".join(message.command[1:])
+    movie_encoded = urllib.parse.quote_plus(movie_name)  # safer encoding
     user_id = message.from_user.id
     user_name = message.from_user.first_name
 
     buttons = InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("✅ Already Available", callback_data=f"uploaded_{user_id}_{movie_name}"),
-            InlineKeyboardButton("⏳ Uploading Soon", callback_data=f"uploading_{user_id}_{movie_name}")
+            InlineKeyboardButton("✅ Already Available", callback_data=f"uploaded|{user_id}|{movie_encoded}"),
+            InlineKeyboardButton("⏳ Uploading Soon", callback_data=f"uploading|{user_id}|{movie_encoded}")
         ],
         [
-            InlineKeyboardButton("🚫 Can't Upload", callback_data=f"cantupload_{user_id}_{movie_name}")
+            InlineKeyboardButton("🚫 Can't Upload", callback_data=f"cantupload|{user_id}|{movie_encoded}")
         ]
     ])
 
     text = (
-        f"📥 **New Movie Request:**\n\n"
-        f"🎬 **Movie:** `{movie_name}`\n"
-        f"🙋‍♂️ **User:** [{user_name}](tg://user?id={user_id})"
+        f"📥 **নতুন মুভি অনুরোধ:**\n\n"
+        f"🎬 **মুভি:** `{movie_name}`\n"
+        f"🙋‍♂️ **ইউজার:** [{user_name}](tg://user?id={user_id})"
     )
 
     await client.send_message(
@@ -1450,73 +1451,45 @@ async def request_movie(client: Client, message: Message):
         reply_markup=buttons,
         disable_web_page_preview=True
     )
+    await client.send_message(
+        chat_id=ADMIN_ID,
+        text=text,
+        reply_markup=buttons,
+        disable_web_page_preview=True
+    )
 
     await message.reply(
-        f"✅ আপনার মুভি অনুরোধ `{movie_name}` সাবমিট হয়েছে।",
+        f"✅ আপনার মুভি অনুরোধ `{movie_name}` গ্রহণ করা হয়েছে। খুব শীঘ্রই আপনার সাথে যোগাযোগ করা হবে!",
         quote=True
     )
 
-# বাটন ক্লিক হ্যান্ডলার (auto notify user)
-@Client.on_callback_query(filters.regex(r"^(uploaded|uploading|cantupload)_(\d+)_(.+)$"))
+@Client.on_callback_query(filters.regex(r"^(uploaded|uploading|cantupload)\|(\d+)\|(.+)$"))
 async def callback_handler(client: Client, callback_query: CallbackQuery):
     try:
-        data = callback_query.data
-        action, user_id, movie_name = data.split("_", 2)
+        action, user_id, movie_encoded = callback_query.data.split("|", 2)
         user_id = int(user_id)
+        movie_name = urllib.parse.unquote_plus(movie_encoded)
 
         if action == "uploaded":
-            send_text = f"✅ আপনার অনুরোধকৃত মুভি **{movie_name}** ইতিমধ্যে কালেকশনে আছে!"
+            send_text = f"✅ আপনার অনুরোধকৃত মুভি **{movie_name}** ইতিমধ্যে আপলোড করা হয়েছে!"
         elif action == "uploading":
             send_text = f"⏳ আপনার অনুরোধকৃত মুভি **{movie_name}** শীঘ্রই আপলোড করা হবে!"
         elif action == "cantupload":
-            send_text = f"❌ দুঃখিত! মুভি **{movie_name}** আপলোড করা সম্ভব হচ্ছে না।"
+            send_text = f"❌ দুঃখিত! আপনার অনুরোধকৃত মুভি **{movie_name}** আপলোড করা সম্ভব নয়।"
         else:
-            return await callback_query.answer("Unknown action!", show_alert=True)
+            return await callback_query.answer("❗ অজানা অপারেশন!", show_alert=True)
 
-        await client.send_message(user_id, send_text)
-        await callback_query.answer("✅ ইউজারকে জানানো হয়েছে!", show_alert=True)
+        try:
+            await client.send_message(user_id, send_text)
+            await callback_query.answer("✅ ইউজারকে নোটিফিকেশন পাঠানো হয়েছে।", show_alert=True)
+        except (UserIsBlocked, PeerIdInvalid):
+            await callback_query.answer("❌ ইউজার বটকে ব্লক করেছে বা ভুল আইডি!", show_alert=True)
+
+        # Finally, remove the inline keyboard
         await callback_query.edit_message_reply_markup(reply_markup=None)
 
     except Exception as e:
-        await callback_query.answer(f"❌ Error: {str(e)}", show_alert=True)
-
-# কমান্ড দিয়ে নির্দিষ্ট ইউজারকে রিপ্লাই মেসেজ পাঠানো (broadcast_user)
-@Client.on_message(filters.command("broadcast_request_user") & filters.user(auth_users))
-async def broadcast_to_specific_user(bot: Client, message: Message):
-    if not message.reply_to_message:
-        return await message.reply(
-            "দয়া করে যে মেসেজটি পাঠাতে চান সেটিতে রিপ্লাই দিন এবং কমান্ডে ইউজার আইডি দিন।\n\nউদাহরণ:\n`/broadcast_request_user 123456789`"
-        )
-
-    try:
-        args = message.text.strip().split()
-        if len(args) < 2:
-            return await message.reply("দয়া করে ইউজার আইডি দিন।\n\nউদাহরণ:\n`/broadcast_request_user 123456789`")
-
-        user_id = int(args[1])
-        target_msg = message.reply_to_message
-
-        if target_msg.forward_from_chat:
-            from_chat_id = target_msg.forward_from_chat.id
-            message_id = target_msg.forward_from_message_id
-        else:
-            from_chat_id = message.chat.id
-            message_id = target_msg.id
-
-        await bot.copy_message(
-            chat_id=user_id,
-            from_chat_id=from_chat_id,
-            message_id=message_id
-        )
-
-        await message.reply(f"✅ মেসেজ ইউজার `{user_id}` কে পাঠানো হয়েছে।")
-
-    except Exception as e:
-        await message.reply(f"❌ মেসেজ পাঠানো যায়নি।\nকারণ: `{str(e)}`")
-
-
-
-
+        await callback_query.answer(f"⚠️ ত্রুটি: {str(e)}", show_alert=True)
 
 
 
