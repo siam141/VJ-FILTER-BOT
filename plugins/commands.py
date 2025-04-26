@@ -1413,85 +1413,125 @@ async def purge_requests(client, message):
 
 from pyrogram import Client, filters
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
-from pyrogram.errors import UserIsBlocked, PeerIdInvalid
-import urllib.parse
+from database.gfilters_mdb import add_movie_request, delete_movie_request, get_all_requests, clear_all_requests
+from datetime import datetime
 
+# আপনার চ্যানেল আইডি ও অ্যাডমিন আইডি
 LOG_CHANNEL = -1002589776901
 ADMIN_ID = 7862181538
 
+# ইউজার রিকোয়েস্ট হ্যান্ডলার
 @Client.on_message(filters.command("requestbot") & filters.private)
-async def request_movie(client: Client, message: Message):
+async def handle_request(client, message: Message):
     if len(message.command) < 2:
-        return await message.reply("দয়া করে `/requestbot মুভি নাম` এর মত করে পাঠান।")
+        return await message.reply("❌ Usage: `/requestbot Movie Name`", quote=True)
 
     movie_name = " ".join(message.command[1:])
-    movie_encoded = urllib.parse.quote_plus(movie_name)  # safer encoding
-    user_id = message.from_user.id
-    user_name = message.from_user.first_name
+    user = message.from_user
 
-    buttons = InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton("✅ Already Available", callback_data=f"uploaded|{user_id}|{movie_encoded}"),
-            InlineKeyboardButton("⏳ Uploading Soon", callback_data=f"uploading|{user_id}|{movie_encoded}")
-        ],
-        [
-            InlineKeyboardButton("🚫 Can't Upload", callback_data=f"cantupload|{user_id}|{movie_encoded}")
-        ]
-    ])
+    await add_movie_request(user.id, movie_name)
 
-    text = (
-        f"📥 **নতুন মুভি অনুরোধ:**\n\n"
-        f"🎬 **মুভি:** `{movie_name}`\n"
-        f"🙋‍♂️ **ইউজার:** [{user_name}](tg://user?id={user_id})"
-    )
-
-    await client.send_message(
-        chat_id=LOG_CHANNEL,
-        text=text,
-        reply_markup=buttons,
-        disable_web_page_preview=True
-    )
-    await client.send_message(
-        chat_id=ADMIN_ID,
-        text=text,
-        reply_markup=buttons,
-        disable_web_page_preview=True
-    )
+    # Admin / Log channel এ নোটিফাই করো
+    await send_movie_request_to_admins(client, movie_name, user.id, user.first_name, LOG_CHANNEL)
+    await send_movie_request_to_admins(client, movie_name, user.id, user.first_name, ADMIN_ID)
 
     await message.reply(
-        f"✅ আপনার মুভি অনুরোধ `{movie_name}` গ্রহণ করা হয়েছে। খুব শীঘ্রই আপনার সাথে যোগাযোগ করা হবে!",
+        f"✅ Your request for `{movie_name}` has been submitted successfully!\n"
+        "You will be notified once it is available.",
         quote=True
     )
 
-@Client.on_callback_query(filters.regex(r"^(uploaded|uploading|cantupload)\|(\d+)\|(.+)$"))
-async def callback_handler(client: Client, callback_query: CallbackQuery):
+# রিকোয়েস্ট লিস্ট দেখার জন্য (শুধু অ্যাডমিন)
+@Client.on_message(filters.command("requestlist") & filters.user(ADMIN_ID))
+async def request_list(client, message: Message):
+    data = await get_all_requests()
+    if not data:
+        return await message.reply("📭 No pending movie requests.")
+
+    text = "🎞️ **Pending Movie Requests:**\n\n"
+    for i, req in enumerate(data, start=1):
+        text += f"{i}. `{req['movie_name']}` - [User](tg://user?id={req['user_id']})\n"
+
+    await message.reply(text)
+
+# সব রিকোয়েস্ট ক্লিয়ার করার জন্য
+@Client.on_message(filters.command("clearrequests") & filters.user(ADMIN_ID))
+async def clear_requests(client, message: Message):
+    await clear_all_requests()
+    await message.reply("✅ All pending requests have been cleared.")
+
+# অ্যাডমিনদের রিকোয়েস্ট ফরোয়ার্ড করার ফাংশন
+async def send_movie_request_to_admins(client: Client, movie_name: str, user_id: int, user_name: str, chat_id: int):
+    request_time = datetime.now().strftime("%d-%m-%Y %I:%M %p")
+
+    text = f"""
+📩 **New Movie Request Received**
+
+🎬 **Movie Name:** `{movie_name}`
+👤 **Requested By:** [{user_name}](tg://user?id={user_id})
+🆔 **User ID:** `{user_id}`
+🕰️ **Request Time:** `{request_time}`
+
+━━━━━━━━━━━━━━━━━━━━━━
+
+🔵 **Broadcast Commands:**
+
+`/broadcast_user {user_id} {movie_name} Uploaded`
+`/broadcast_user {user_id} {movie_name} Upload Soon`
+`/broadcast_user {user_id} {movie_name} Never Uploaded`
+"""
+
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("✅ Uploaded", callback_data=f"uploaded_{user_id}|{movie_name}"),
+            InlineKeyboardButton("⏳ Upload Soon", callback_data=f"uploading_{user_id}|{movie_name}"),
+            InlineKeyboardButton("🚫 Never Uploaded", callback_data=f"cantupload_{user_id}|{movie_name}")
+        ],
+        [
+            InlineKeyboardButton("📋 Copy Commands", callback_data="copy_commands")
+        ]
+    ])
+
+    await client.send_message(
+        chat_id=chat_id,
+        text=text,
+        reply_markup=keyboard,
+        disable_web_page_preview=True
+    )
+
+# বাটন হ্যান্ডলার (callbackquery)
+@Client.on_callback_query()
+async def callback_handler(client, query: CallbackQuery):
+    data = query.data
+    if data == "copy_commands":
+        await query.answer("Copy manually from text.", show_alert=True)
+        return
+
+    if "|" not in data:
+        return
+
+    action, rest = data.split("_", 1)
+    user_id, movie_name = rest.split("|", 1)
+
+    user_id = int(user_id)
+
+    if action == "uploaded":
+        msg = f"✅ Your requested movie `{movie_name}` has been uploaded successfully! Check it out!"
+    elif action == "uploading":
+        msg = f"⏳ Your requested movie `{movie_name}` will be uploaded soon. Stay tuned!"
+    elif action == "cantupload":
+        msg = f"🚫 Sorry, the requested movie `{movie_name}` cannot be uploaded."
+
     try:
-        action, user_id, movie_encoded = callback_query.data.split("|", 2)
-        user_id = int(user_id)
-        movie_name = urllib.parse.unquote_plus(movie_encoded)
-
-        if action == "uploaded":
-            send_text = f"✅ আপনার অনুরোধকৃত মুভি **{movie_name}** ইতিমধ্যে আপলোড করা হয়েছে!"
-        elif action == "uploading":
-            send_text = f"⏳ আপনার অনুরোধকৃত মুভি **{movie_name}** শীঘ্রই আপলোড করা হবে!"
-        elif action == "cantupload":
-            send_text = f"❌ দুঃখিত! আপনার অনুরোধকৃত মুভি **{movie_name}** আপলোড করা সম্ভব নয়।"
-        else:
-            return await callback_query.answer("❗ অজানা অপারেশন!", show_alert=True)
-
-        try:
-            await client.send_message(user_id, send_text)
-            await callback_query.answer("✅ ইউজারকে নোটিফিকেশন পাঠানো হয়েছে।", show_alert=True)
-        except (UserIsBlocked, PeerIdInvalid):
-            await callback_query.answer("❌ ইউজার বটকে ব্লক করেছে বা ভুল আইডি!", show_alert=True)
-
-        # Finally, remove the inline keyboard
-        await callback_query.edit_message_reply_markup(reply_markup=None)
-
+        await client.send_message(
+            chat_id=user_id,
+            text=msg
+        )
+        await query.answer("Notification sent to user.", show_alert=True)
+        await delete_movie_request(user_id, movie_name)
+        await query.message.edit_text(query.message.text.markdown.replace('📩 **New Movie Request Received**', '✅ **Request Processed**'))
     except Exception as e:
-        await callback_query.answer(f"⚠️ ত্রুটি: {str(e)}", show_alert=True)
-
-
+        await query.answer(f"Failed: {e}", show_alert=True)
 
 
 #brodcat_user
