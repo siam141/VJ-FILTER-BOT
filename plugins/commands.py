@@ -1474,11 +1474,11 @@ async def send_movie_request_to_admins(client: Client, movie_name: str, user_id:
 
 ━━━━━━━━━━━━━━━━━━━━━━
 
-🔵 **Broadcast Commands:**
+🔵 **Broadcast Command:**
 
-`/broadcast_user {user_id} {movie_name} Uploaded`
-`/broadcast_user {user_id} {movie_name} Upload Soon`
-`/broadcast_user {user_id} {movie_name} Never Uploaded`
+`/broadcast_user_request {user_id} {movie_name} Uploaded`
+`/broadcast_user_request {user_id} {movie_name} UploadSoon`
+`/broadcast_user_request {user_id} {movie_name} NeverUploaded`
 """
 
     keyboard = InlineKeyboardMarkup([
@@ -1533,6 +1533,35 @@ async def callback_handler(client, query: CallbackQuery):
     except Exception as e:
         await query.answer(f"Failed: {e}", show_alert=True)
 
+# নতুন Broadcast Command হ্যান্ডলার (manual)
+@Client.on_message(filters.command("broadcast_user_request") & filters.user(ADMIN_ID))
+async def broadcast_user_request(client, message: Message):
+    if len(message.command) < 4:
+        return await message.reply("❌ Usage: `/broadcast_user_request user_id movie_name status`", quote=True)
+
+    try:
+        user_id = int(message.command[1])
+        movie_name = message.command[2]
+        status = message.command[3].lower()
+
+        if status == "uploaded":
+            text = f"✅ Your requested movie `{movie_name}` has been uploaded successfully! Check it out!"
+        elif status == "uploadsoon":
+            text = f"⏳ Your requested movie `{movie_name}` will be uploaded soon. Stay tuned!"
+        elif status == "neveruploaded":
+            text = f"🚫 Sorry, the requested movie `{movie_name}` cannot be uploaded."
+        else:
+            return await message.reply("❌ Invalid status. Choose one of: Uploaded, UploadSoon, NeverUploaded.", quote=True)
+
+        await client.send_message(
+            chat_id=user_id,
+            text=text
+        )
+        await delete_movie_request(user_id, movie_name)
+        await message.reply(f"✅ Notification sent to user `{user_id}` regarding `{movie_name}`.")
+
+    except Exception as e:
+        await message.reply(f"⚠️ Error: {e}")
 
 #brodcat_user
 
