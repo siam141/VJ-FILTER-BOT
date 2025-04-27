@@ -28,6 +28,7 @@ DB_NAME = environ.get('DATABASE_NAME', "techvjclonefilterbot")
 
 
 # This Pictures Is For Start Message 
+
 def get_random_tmdb_backdrop():
     try:
         TMDB_API_KEY = os.environ.get('TMDB_API_KEY', 'c3443ed2f96cd615e3badf6b68c8a689')
@@ -38,39 +39,28 @@ def get_random_tmdb_backdrop():
         url = f'https://api.themoviedb.org/3/movie/{movie_id}?api_key={TMDB_API_KEY}&language=en-US'
 
         response = requests.get(url)
-        if response.status_code != 200:
-            # If movie not found, try TV
+        data = response.json()
+
+        backdrop_path = data.get('backdrop_path')
+        if backdrop_path:
+            return f'https://image.tmdb.org/t/p/original{backdrop_path}'
+        else:
+            # Try TV shows if movie not found
             url = f'https://api.themoviedb.org/3/tv/{movie_id}?api_key={TMDB_API_KEY}&language=en-US'
             response = requests.get(url)
-
-        if response.status_code == 200:
             data = response.json()
             backdrop_path = data.get('backdrop_path')
             if backdrop_path:
                 return f'https://image.tmdb.org/t/p/original{backdrop_path}'
 
-        return 'https://image.tmdb.org/t/p/original/fzvzm3HDEHhnpdiq17pdE7eJ6WJ.jpg'  # fallback if nothing found
+        return 'https://example.com/default.jpg'  # fallback if not found
 
     except Exception as e:
         print(f"Error fetching backdrop: {e}")
-        return 'https://image.tmdb.org/t/p/original/fzvzm3HDEHhnpdiq17pdE7eJ6WJ.jpg'
+        return 'https://example.com/default.jpg'
 
-def get_pics():
-    pics_env = os.environ.get('PICS')
-    if pics_env:
-        # যদি ইউজার নিজে ইমেজ লিস্ট সেট করে রাখে
-        return pics_env.split()
-    else:
-        # না থাকলে র‍্যান্ডম TMDB থেকে একটা ব্যাকড্রপ নাও
-        return [get_random_tmdb_backdrop()]
-
-# যখন দরকার, এইভাবে ইউজ করো
-PICS = get_pics()
-
-# উদাহরণ - র‍্যান্ডম একটা পিক নেয়া
-selected_pic = random.choice(PICS)
-print(f"Selected Image: {selected_pic}")
-
+# এখন PICS এ এইভাবে বসাও
+PICS = get_random_tmdb_backdrop()
 
 
 
