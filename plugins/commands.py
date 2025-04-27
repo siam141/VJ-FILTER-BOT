@@ -2,10 +2,16 @@
 # Subscribe YouTube Channel For Amazing Bot @Tech_VJ
 # Ask Doubt on telegram @KingVJ01
 
-import os, random, asyncio, logging, requests
+import os
+import random
+import asyncio
+import logging
+import requests
+
 from pyrogram import Client, filters, enums
-from pyrogram.types import *
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from pyrogram.errors import ChatAdminRequired, FloodWait
+
 from Script import script
 from database.ia_filterdb import col, sec_col, get_file_details, unpack_new_file_id, get_bad_files
 from database.users_chats_db import db
@@ -44,8 +50,9 @@ async def get_backdrop_list():
                 "page": random.randint(1, 500),
             }
             response = requests.get(endpoint, params=params)
+            response.raise_for_status()  # যদি HTTP error হয়
             data = response.json()
-            results = data.get("results")
+            results = data.get("results", [])
 
             if results:
                 movie = random.choice(results)
@@ -109,26 +116,19 @@ async def start(client, message):
             )
         )
 
+    # Check if Start Command has a Parameter
     if len(message.command) != 2:
+        buttons = [
+            [InlineKeyboardButton('⤬ ᴀᴅᴅ ᴍᴇ ᴛᴏ ʏᴏᴜʀ ɢʀᴏᴜᴘ ⤬', url=f'http://t.me/{temp.U_NAME}?startgroup=true')],
+            [InlineKeyboardButton('ᴇᴀʀɴ ᴍᴏɴᴇʏ', callback_data="shortlink_info"),
+             InlineKeyboardButton('ᴍᴏᴠɪᴇ ɢʀᴏᴜᴘ', url=GRP_LNK)],
+            [InlineKeyboardButton('ʜᴇʟᴘ', callback_data='help'),
+             InlineKeyboardButton('ᴀʙᴏᴜᴛ', callback_data='about')]
+        ]
+
         if PREMIUM_AND_REFERAL_MODE:
-            buttons = [
-                [InlineKeyboardButton('⤬ ᴀᴅᴅ ᴍᴇ ᴛᴏ ʏᴏᴜʀ ɢʀᴏᴜᴘ ⤬', url=f'http://t.me/{temp.U_NAME}?startgroup=true')],
-                [InlineKeyboardButton('ᴇᴀʀɴ ᴍᴏɴᴇʏ', callback_data="shortlink_info"),
-                 InlineKeyboardButton('ᴍᴏᴠɪᴇ ɢʀᴏᴜᴘ', url=GRP_LNK)],
-                [InlineKeyboardButton('ʜᴇʟᴘ', callback_data='help'),
-                 InlineKeyboardButton('ᴀʙᴏᴜᴛ', callback_data='about')],
-                [InlineKeyboardButton('ᴘʀᴇᴍɪᴜᴍ ᴀɴᴅ ʀᴇғᴇʀʀᴀʟ', callback_data='subscription')],
-                [InlineKeyboardButton('ᴊᴏɪɴ ᴜᴘᴅᴀᴛᴇ ᴄʜᴀɴɴᴇʟ', url=CHNL_LNK)]
-            ]
-        else:
-            buttons = [
-                [InlineKeyboardButton('⤬ ᴀᴅᴅ ᴍᴇ ᴛᴏ ʏᴏᴜʀ ɢʀᴏᴜᴘ ⤬', url=f'http://t.me/{temp.U_NAME}?startgroup=true')],
-                [InlineKeyboardButton('ᴇᴀʀɴ ᴍᴏɴᴇʏ', callback_data="shortlink_info"),
-                 InlineKeyboardButton('ᴍᴏᴠɪᴇ ɢʀᴏᴜᴘ', url=GRP_LNK)],
-                [InlineKeyboardButton('ʜᴇʟᴘ', callback_data='help'),
-                 InlineKeyboardButton('ᴀʙᴏᴜᴛ', callback_data='about')],
-                [InlineKeyboardButton('ᴊᴏɪɴ ᴜᴘᴅᴀᴛᴇ ᴄʜᴀɴɴᴇʟ', url=CHNL_LNK)]
-            ]
+            buttons.append([InlineKeyboardButton('ᴘʀᴇᴍɪᴜᴍ ᴀɴᴅ ʀᴇғᴇʀʀᴀʟ', callback_data='subscription')])
+        buttons.append([InlineKeyboardButton('ᴊᴏɪɴ ᴜᴘᴅᴀᴛᴇ ᴄʜᴀɴɴᴇʟ', url=CHNL_LNK)])
 
         if CLONE_MODE:
             buttons.append([InlineKeyboardButton('ᴄʀᴇᴀᴛᴇ ᴏᴡɴ ᴄʟᴏɴᴇ ʙᴏᴛ', callback_data='clone')])
@@ -136,9 +136,12 @@ async def start(client, message):
         reply_markup = InlineKeyboardMarkup(buttons)
 
         # Sticker Send
-        m = await message.reply_sticker("CAACAgIAAxkBAAICOmgJxuNw-rCgpSyhVl3-m3n_VlpAAAK0IwACmEspSN65vs0qW-TZHgQ")
-        await asyncio.sleep(1)
-        await m.delete()
+        try:
+            m = await message.reply_sticker("CAACAgIAAxkBAAICOmgJxuNw-rCgpSyhVl3-m3n_VlpAAAK0IwACmEspSN65vs0qW-TZHgQ")
+            await asyncio.sleep(1)
+            await m.delete()
+        except Exception:
+            pass
 
         # Get Backdrop Images
         pics = await get_backdrop_list()
