@@ -17,6 +17,45 @@ from urllib.parse import quote_plus
 from TechVJ.util.file_properties import get_name, get_hash, get_media_file_size
 logger = logging.getLogger(__name__)
 
+
+
+import random
+import requests
+
+TMDB_API_KEY = "c3443ed2f96cd615e3badf6b68c8a689"
+TMDB_RANDOM_MOVIE_API = "https://api.themoviedb.org/3/discover/movie"
+TMDB_RANDOM_TV_API = "https://api.themoviedb.org/3/discover/tv"
+IMAGE_PATH = "https://image.tmdb.org/t/p/original"
+
+async def get_backdrop_list():
+    PICS = []
+    try:
+        for _ in range(5):  # 5টা ব্যাকড্রপ নেবে
+            endpoint = random.choice([TMDB_RANDOM_MOVIE_API, TMDB_RANDOM_TV_API])
+            params = {
+                "api_key": TMDB_API_KEY,
+                "sort_by": "popularity.desc",
+                "page": random.randint(1, 500),
+            }
+            response = requests.get(endpoint, params=params)
+            data = response.json()
+            results = data.get("results")
+
+            if results:
+                movie = random.choice(results)
+                backdrop_path = movie.get("backdrop_path")
+                if backdrop_path:
+                    backdrop_url = IMAGE_PATH + backdrop_path
+                    PICS.append(backdrop_url)
+    except Exception as e:
+        print(f"Backdrop Error: {e}")
+
+    return PICS
+
+
+
+
+
 BATCH_FILES = {}
 join_db = JoinReqs
 
@@ -78,9 +117,16 @@ async def start(client, message):
         reply_markup = InlineKeyboardMarkup(buttons)
         m=await message.reply_sticker("CAACAgIAAxkBAAICOmgJxuNw-rCgpSyhVl3-m3n_VlpAAAK0IwACmEspSN65vs0qW-TZHgQ") 
         await asyncio.sleep(1)
-        await m.delete()
-        await message.reply_photo(
-            photo=random.choice(PICS),
+await m.delete()
+
+PICS = await get_backdrop_list()  # এখানে TMDB API থেকে রেনডম ব্যাকড্রপ লিংকগুলা আসবে
+
+if PICS:
+    await message.reply_photo(
+        photo=random.choice(PICS),
+    )
+else:
+    await message.reply_text("ব্যাকড্রপ ইমেজ আনতে সমস্যা হয়েছে!")
             caption=script.START_TXT.format(message.from_user.mention, temp.U_NAME, temp.B_NAME),
             reply_markup=reply_markup,
             parse_mode=enums.ParseMode.HTML
