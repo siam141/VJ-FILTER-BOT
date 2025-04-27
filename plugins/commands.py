@@ -2,35 +2,41 @@
 # Subscribe YouTube Channel For Amazing Bot @Tech_VJ
 # Ask Doubt on telegram @KingVJ01
 
-import os, string, logging, random, asyncio, time, datetime, re, sys, json, base64
-from Script import script
+import os, random, asyncio, logging, requests
 from pyrogram import Client, filters, enums
-from pyrogram.errors import ChatAdminRequired, FloodWait
 from pyrogram.types import *
+from pyrogram.errors import ChatAdminRequired, FloodWait
+from Script import script
 from database.ia_filterdb import col, sec_col, get_file_details, unpack_new_file_id, get_bad_files
-from database.users_chats_db import db, delete_all_referal_users, get_referal_users_count, get_referal_all_users, referal_add_user
+from database.users_chats_db import db
 from database.join_reqs import JoinReqs
-from info import CLONE_MODE, OWNER_LNK, REACTIONS, CHANNELS, REQUEST_TO_JOIN_MODE, TRY_AGAIN_BTN, ADMINS, SHORTLINK_MODE, PREMIUM_AND_REFERAL_MODE, STREAM_MODE, AUTH_CHANNEL, REFERAL_PREMEIUM_TIME, REFERAL_COUNT, PAYMENT_TEXT, PAYMENT_QR, LOG_CHANNEL, PICS, BATCH_FILE_CAPTION, CUSTOM_FILE_CAPTION, PROTECT_CONTENT, CHNL_LNK, GRP_LNK, REQST_CHANNEL, SUPPORT_CHAT, MAX_B_TN, VERIFY, SHORTLINK_API, SHORTLINK_URL, TUTORIAL, VERIFY_TUTORIAL, IS_TUTORIAL, URL
-from utils import get_settings, pub_is_subscribed, get_size, is_subscribed, save_group_settings, temp, verify_user, check_token, check_verification, get_token, get_shortlink, get_tutorial, get_seconds
-from database.connections_mdb import active_connection
-from urllib.parse import quote_plus
+from info import (
+    CLONE_MODE, OWNER_LNK, REACTIONS, CHANNELS, REQUEST_TO_JOIN_MODE, TRY_AGAIN_BTN,
+    ADMINS, SHORTLINK_MODE, PREMIUM_AND_REFERAL_MODE, STREAM_MODE, AUTH_CHANNEL, 
+    REFERAL_PREMEIUM_TIME, REFERAL_COUNT, PAYMENT_TEXT, PAYMENT_QR, LOG_CHANNEL,
+    PICS, BATCH_FILE_CAPTION, CUSTOM_FILE_CAPTION, PROTECT_CONTENT, CHNL_LNK, 
+    GRP_LNK, REQST_CHANNEL, SUPPORT_CHAT, MAX_B_TN, VERIFY, SHORTLINK_API, 
+    SHORTLINK_URL, TUTORIAL, VERIFY_TUTORIAL, IS_TUTORIAL, URL
+)
+from utils import (
+    get_settings, pub_is_subscribed, get_size, is_subscribed, save_group_settings,
+    temp, verify_user, check_token, check_verification, get_token, get_shortlink,
+    get_tutorial, get_seconds
+)
 from TechVJ.util.file_properties import get_name, get_hash, get_media_file_size
+
 logger = logging.getLogger(__name__)
 
-
-
-import random
-import requests
-
+# TMDB Configuration
 TMDB_API_KEY = "c3443ed2f96cd615e3badf6b68c8a689"
 TMDB_RANDOM_MOVIE_API = "https://api.themoviedb.org/3/discover/movie"
 TMDB_RANDOM_TV_API = "https://api.themoviedb.org/3/discover/tv"
 IMAGE_PATH = "https://image.tmdb.org/t/p/original"
 
 async def get_backdrop_list():
-    PICS = []
+    pics = []
     try:
-        for _ in range(5):  # 5টা ব্যাকড্রপ নেবে
+        for _ in range(5):  # ৫টা ব্যাকড্রপ আনবে
             endpoint = random.choice([TMDB_RANDOM_MOVIE_API, TMDB_RANDOM_TV_API])
             params = {
                 "api_key": TMDB_API_KEY,
@@ -46,15 +52,11 @@ async def get_backdrop_list():
                 backdrop_path = movie.get("backdrop_path")
                 if backdrop_path:
                     backdrop_url = IMAGE_PATH + backdrop_path
-                    PICS.append(backdrop_url)
+                    pics.append(backdrop_url)
     except Exception as e:
-        print(f"Backdrop Error: {e}")
+        logger.error(f"Backdrop Fetch Error: {e}")
 
-    return PICS
-
-
-
-
+    return pics
 
 BATCH_FILES = {}
 join_db = JoinReqs
@@ -63,7 +65,7 @@ join_db = JoinReqs
 async def start(client, message):
     try:
         await message.react(emoji=random.choice(REACTIONS), big=True)
-    except:
+    except Exception:
         pass
 
     if message.chat.type in [enums.ChatType.GROUP, enums.ChatType.SUPERGROUP]:
@@ -75,22 +77,37 @@ async def start(client, message):
         ]
         reply_markup = InlineKeyboardMarkup(buttons)
         await message.reply(
-            script.START_TXT.format(message.from_user.mention if message.from_user else message.chat.title, temp.U_NAME, temp.B_NAME),
+            script.START_TXT.format(
+                message.from_user.mention if message.from_user else message.chat.title,
+                temp.U_NAME,
+                temp.B_NAME
+            ),
             reply_markup=reply_markup,
             disable_web_page_preview=True
         )
         await asyncio.sleep(2)
-        
+
         if not await db.get_chat(message.chat.id):
             total = await client.get_chat_members_count(message.chat.id)
-            await client.send_message(LOG_CHANNEL, script.LOG_TEXT_G.format(message.chat.title, message.chat.id, total, "Unknown"))       
+            await client.send_message(
+                LOG_CHANNEL,
+                script.LOG_TEXT_G.format(
+                    message.chat.title, message.chat.id, total, "Unknown"
+                )
+            )
             await db.add_chat(message.chat.id, message.chat.title)
         return
 
-    # Private start
+    # Private Chat Start
     if not await db.is_user_exist(message.from_user.id):
         await db.add_user(message.from_user.id, message.from_user.first_name)
-        await client.send_message(LOG_CHANNEL, script.LOG_TEXT_P.format(message.from_user.id, message.from_user.mention))
+        await client.send_message(
+            LOG_CHANNEL,
+            script.LOG_TEXT_P.format(
+                message.from_user.id,
+                message.from_user.mention
+            )
+        )
 
     if len(message.command) != 2:
         if PREMIUM_AND_REFERAL_MODE:
@@ -118,17 +135,20 @@ async def start(client, message):
 
         reply_markup = InlineKeyboardMarkup(buttons)
 
+        # Sticker Send
         m = await message.reply_sticker("CAACAgIAAxkBAAICOmgJxuNw-rCgpSyhVl3-m3n_VlpAAAK0IwACmEspSN65vs0qW-TZHgQ")
         await asyncio.sleep(1)
         await m.delete()
 
-        # TMDB থেকে ব্যাকড্রপ ইমেজ আনা
-        PICS = await get_backdrop_list()
+        # Get Backdrop Images
+        pics = await get_backdrop_list()
 
-        if PICS:
+        if pics:
             await message.reply_photo(
-                photo=random.choice(PICS),
-                caption=script.START_TXT.format(message.from_user.mention, temp.U_NAME, temp.B_NAME),
+                photo=random.choice(pics),
+                caption=script.START_TXT.format(
+                    message.from_user.mention, temp.U_NAME, temp.B_NAME
+                ),
                 reply_markup=reply_markup,
                 parse_mode=enums.ParseMode.HTML
             )
