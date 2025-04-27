@@ -736,3 +736,49 @@ async def get_seconds(time_string):
         return value * 86400 * 365
     else:
         return 0
+
+
+
+
+
+#hvvjgvvihihihinonkhihhvhvhvvyv
+
+import random
+import requests
+import os
+
+def get_random_tmdb_backdrop():
+    try:
+        TMDB_API_KEY = os.environ.get('TMDB_API_KEY', 'c3443ed2f96cd615e3badf6b68c8a689')
+        if not TMDB_API_KEY:
+            return 'https://example.com/default.jpg'  # fallback image
+
+        movie_id = random.randint(100, 1000000)  # Random movie/series ID
+        url = f'https://api.themoviedb.org/3/movie/{movie_id}?api_key={TMDB_API_KEY}&language=en-US'
+
+        response = requests.get(url)
+        data = response.json()
+
+        backdrop_path = data.get('backdrop_path')
+        if backdrop_path:
+            return f'https://image.tmdb.org/t/p/original{backdrop_path}'
+        else:
+            # Try TV shows if movie not found
+            url = f'https://api.themoviedb.org/3/tv/{movie_id}?api_key={TMDB_API_KEY}&language=en-US'
+            response = requests.get(url)
+            data = response.json()
+            backdrop_path = data.get('backdrop_path')
+            if backdrop_path:
+                return f'https://image.tmdb.org/t/p/original{backdrop_path}'
+
+        return 'https://example.com/default.jpg'  # fallback if not found
+
+    except Exception as e:
+        print(f"Error fetching backdrop: {e}")
+        return 'https://example.com/default.jpg'
+
+
+
+
+
+        
