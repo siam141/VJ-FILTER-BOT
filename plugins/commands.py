@@ -150,7 +150,7 @@ async def start(client, message):
 
         # Sticker পাঠানো
         try:
-            m = await message.reply_sticker("CAACAgIAAxkBAAICOmgJxuNw-rCgpSyhVl3-m3n_VlpAAAK0IwACmEspSN65vs0qW-TZHgQ")
+            m = await message.reply_sticker("CAACAgUAAxkBAAIKbWgORebc2uo1JsaHFlQXrZg41BTZAAKdFgACAYFxVBRiNyzPqebhNgQ")
             await asyncio.sleep(1)
             await m.delete()
         except Exception:
