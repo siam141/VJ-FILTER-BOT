@@ -1513,6 +1513,8 @@ from datetime import datetime
 LOG_CHANNEL = -1002589776901  # তোমার লগ চ্যানেল আইডি
 ADMIN_ID = 7862181538         # তোমার টেলিগ্রাম ইউজার আইডি
 
+vote_data = {}  # movie_id অনুযায়ী ভোট ট্র্যাক রাখবে
+
 # ইউজার রিকোয়েস্ট হ্যান্ডলার
 @Client.on_message(filters.command("requestbot") & filters.private)
 async def handle_request(client: Client, message: Message):
@@ -1524,10 +1526,9 @@ async def handle_request(client: Client, message: Message):
 
     # TMDb সার্চ
     search_results = await search_movie(movie_name)
-
     if not search_results:
         return await message.reply(
-            f"❌ `{movie_name}` নামে কোনো মুভি খুঁজে পাওয়া যায়নি।\n\nদয়া করে সঠিক বানান লিখে চেষ্টা করুন।",
+            f"❌ `{movie_name}` নামে কোনো মুভি খুঁজে পাওয়া যায়নি।",
             quote=True
         )
 
@@ -1541,7 +1542,7 @@ async def handle_request(client: Client, message: Message):
             [f"`{movie.get('title')}` ({movie.get('release_date', 'N/A')[:4]})" for movie in search_results[:5]]
         )
         return await message.reply(
-            f"❗ আপনার দেওয়া মুভি নামের সাথে পুরোপুরি মিলেনি।\n\nসম্ভাব্য মুভি নামগুলো:\n\n{suggestions}\n\n"
+            f"❗ পুরোপুরি মিলে নাই। সম্ভাব্য মুভি:\n\n{suggestions}\n\n"
             "অনুগ্রহ করে সঠিক নাম দিয়ে আবার চেষ্টা করুন।",
             quote=True
         )
@@ -1549,11 +1550,11 @@ async def handle_request(client: Client, message: Message):
     # ডেটাবেজে সেভ করা
     await add_movie_request(user.id, confirmed_movie_name)
 
-    # চ্যানেলে ভোটিং পোস্ট পাঠানো
+    # চ্যানেলে ভোটিং মেসেজ পাঠানো
     await send_voting_message(client, confirmed_movie_name, user.id, user.first_name, poster_url)
 
     await message.reply(
-        f"✅ আপনার `{confirmed_movie_name}` মুভির রিকোয়েস্ট গ্রহণ করা হয়েছে!\n\nভোটিং চ্যানেলে চেক করুন।",
+        f"✅ `{confirmed_movie_name}` রিকোয়েস্ট করা হয়েছে!\n\nভোটিং চ্যানেলে দেখুন।",
         quote=True
     )
 
@@ -1562,91 +1563,74 @@ async def send_voting_message(client: Client, movie_name: str, user_id: int, use
     request_time = datetime.now().strftime("%d-%m-%Y %I:%M %p")
 
     caption = f"""
-🎬 **মুভি রিকোয়েস্ট:** `{movie_name}`
+🎬 **রিকোয়েস্টেড মুভি:** `{movie_name}`
 👤 **রিকোয়েস্ট করেছে:** [{user_name}](tg://user?id={user_id})
 🆔 **ইউজার আইডি:** `{user_id}`
 🕰️ **সময়:** `{request_time}`
 
-আপনি কি এই মুভি চান? ভোট দিন নিচের বাটন থেকে।
+ভোট দিন নিচের বাটনে!
 """
 
     buttons = InlineKeyboardMarkup([
         [
             InlineKeyboardButton("👍 চাই", callback_data=f"vote_yes_{user_id}_{movie_name}"),
             InlineKeyboardButton("👎 চাই না", callback_data=f"vote_no_{user_id}_{movie_name}")
-        ],
-        [
-            InlineKeyboardButton("✅ Approve", callback_data=f"approve_{user_id}_{movie_name}"),
-            InlineKeyboardButton("❌ Reject", callback_data=f"reject_{user_id}_{movie_name}")
         ]
     ])
 
     if poster_url:
-        await client.send_photo(
+        msg = await client.send_photo(
             chat_id=LOG_CHANNEL,
             photo=poster_url,
             caption=caption,
             reply_markup=buttons
         )
     else:
-        await client.send_message(
+        msg = await client.send_message(
             chat_id=LOG_CHANNEL,
             text=caption,
             reply_markup=buttons
         )
 
-# Approve / Reject Callback হ্যান্ডলার
-@Client.on_callback_query(filters.regex(r"^(approve|reject)_(\d+)_(.+)"))
-async def approve_or_reject(client: Client, callback_query: CallbackQuery):
+    # ভোট ডাটাবেজ সেট করা
+    vote_data[msg.id] = {"yes": 0, "no": 0, "movie_name": movie_name, "user_id": user_id}
+
+# ভোটিং Callback হ্যান্ডলার
+@Client.on_callback_query(filters.regex(r"^(vote_yes|vote_no)_(\d+)_(.+)"))
+async def vote_handler(client: Client, callback_query: CallbackQuery):
     action, user_id, movie_name = callback_query.data.split("_", 2)
-    user_id = int(user_id)
+    message_id = callback_query.message.id
 
-    if callback_query.from_user.id != ADMIN_ID:
-        return await callback_query.answer("❌ আপনি অনুমোদিত নন।", show_alert=True)
+    if message_id not in vote_data:
+        return await callback_query.answer("ভোট ইতিমধ্যে শেষ হয়েছে!", show_alert=True)
 
-    movie_details = await get_movie_details(movie_name)
-    if not movie_details:
-        overview = "কোনো বর্ণনা পাওয়া যায়নি।"
-        poster_url = None
+    if action == "vote_yes":
+        vote_data[message_id]["yes"] += 1
     else:
-        overview = movie_details.get("overview", "কোনো বর্ণনা নেই।")
-        poster_path = movie_details.get("poster_path")
-        poster_url = f"https://image.tmdb.org/t/p/w500{poster_path}" if poster_path else None
+        vote_data[message_id]["no"] += 1
 
-    status_text = (
-        "✅ আপনার রিকোয়েস্ট করা মুভিটি **অনুমোদন করা হয়েছে** এবং শীঘ্রই আপলোড করা হবে।"
-        if action == "approve"
-        else "❌ দুঃখিত, আপনার রিকোয়েস্ট করা মুভিটি **বাতিল করা হয়েছে**।"
-    )
+    # চেক করা হয় ৫টা ভোট হয়ে গেছে কিনা
+    yes_votes = vote_data[message_id]["yes"]
+    no_votes = vote_data[message_id]["no"]
 
-    caption = f"""
-🎬 **{movie_name}**
-📝 **বর্ণনা:** {overview[:400]}...
+    if yes_votes >= 5:
+        # এডমিনকে মেসেজ
+        await client.send_message(
+            chat_id=ADMIN_ID,
+            text=f"✅ `{movie_name}` মুভি জন্য ৫টা 'চাই' ভোট এসেছে।\n\nআপনি আপলোড শুরু করতে পারেন!"
+        )
+        del vote_data[message_id]  # ভোট ডাটাবেজ থেকে মুছে দাও
 
-{status_text}
-"""
+    elif no_votes >= 5:
+        await client.send_message(
+            chat_id=ADMIN_ID,
+            text=f"❌ `{movie_name}` মুভি জন্য ৫টা 'চাই না' ভোট এসেছে।\n\nআপনি চাইলে রিকোয়েস্ট বাতিল করতে পারেন।"
+        )
+        del vote_data[message_id]
 
-    # ইউজারকে মেসেজ পাঠানো
-    try:
-        if poster_url:
-            await client.send_photo(chat_id=user_id, photo=poster_url, caption=caption)
-        else:
-            await client.send_message(chat_id=user_id, text=caption)
-    except Exception as e:
-        print(f"Failed to message user {user_id}: {e}")
+    await callback_query.answer("ভোট রেকর্ড করা হলো।")
 
-    # ডেটাবেজ থেকে রিকোয়েস্ট ডিলিট করা
-    await delete_movie_request(user_id, movie_name)
-
-    # অ্যাডমিনের মেসেজ এডিট করা
-    await callback_query.edit_message_caption(
-        caption=f"✅ **{action.capitalize()}ed!**\n\n🎬 `{movie_name}`\n👤 [User](tg://user?id={user_id})",
-        reply_markup=None
-    )
-
-    await callback_query.answer(f"Request {action.capitalize()}ed!")
-
-# রিকোয়েস্ট লিস্ট দেখানোর কমান্ড
+# রিকোয়েস্ট লিস্ট
 @Client.on_message(filters.command("requestlist") & filters.user(ADMIN_ID))
 async def list_requests(client: Client, message: Message):
     data = await get_all_requests()
@@ -1659,7 +1643,7 @@ async def list_requests(client: Client, message: Message):
 
     await message.reply(text)
 
-# সব রিকোয়েস্ট ক্লিয়ার করার কমান্ড
+# রিকোয়েস্ট ক্লিয়ার
 @Client.on_message(filters.command("clearrequests") & filters.user(ADMIN_ID))
 async def clear_all(client: Client, message: Message):
     await clear_all_requests()
@@ -1718,49 +1702,6 @@ async def broadcast_to_specific_user(bot: Client, message: Message):
 
 
 #ঢচভচমচমছযথয
-
-
-
-
-
-from database.gfilters_mdb import vote_request
-
-@Client.on_callback_query(filters.regex(r"vote_yes_(\d+)"))
-async def vote_yes(client, callback_query):
-    message_id = int(callback_query.data.split("_")[-1])
-    user_id = callback_query.from_user.id
-
-    result = await vote_request(message_id, user_id, "yes")
-    if result == "already_voted":
-        await callback_query.answer("আপনি আগে থেকেই ভোট দিয়েছেন!", show_alert=True)
-    else:
-        await callback_query.answer("✅ আপনার ভোট রেকর্ড করা হয়েছে।")
-
-@Client.on_callback_query(filters.regex(r"vote_no_(\d+)"))
-async def vote_no(client, callback_query):
-    message_id = int(callback_query.data.split("_")[-1])
-    user_id = callback_query.from_user.id
-
-    result = await vote_request(message_id, user_id, "no")
-    if result == "already_voted":
-        await callback_query.answer("আপনি আগে থেকেই ভোট দিয়েছেন!", show_alert=True)
-    else:
-        await callback_query.answer("✅ আপনার ভোট রেকর্ড করা হয়েছে।")
-
-
-
-
-
-
-def vote_buttons(message_id):
-    buttons = [
-        [
-            InlineKeyboardButton("✅ YES", callback_data=f"vote_yes_{message_id}"),
-            InlineKeyboardButton("❌ NO", callback_data=f"vote_no_{message_id}")
-        ]
-    ]
-    return InlineKeyboardMarkup(buttons)
-
 
 
 
