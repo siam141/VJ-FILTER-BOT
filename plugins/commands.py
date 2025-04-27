@@ -1507,7 +1507,7 @@ async def purge_requests(client, message):
 from pyrogram import Client, filters
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from database.gfilters_mdb import add_movie_request, delete_movie_request, get_all_requests, clear_all_requests
-from helper.tmdb import search_movie
+from plugins.tmdb import search_movie
 from datetime import datetime
 import asyncio
 
