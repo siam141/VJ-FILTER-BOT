@@ -1507,9 +1507,8 @@ async def purge_requests(client, message):
 from pyrogram import Client, filters
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from database.gfilters_mdb import add_movie_request, delete_movie_request, get_all_requests, clear_all_requests
-from plugins.tmdb import search_movie
+from plugins.tmdb import search_movie, get_movie_details
 from datetime import datetime
-import asyncio
 
 LOG_CHANNEL = -1002589776901
 ADMIN_ID = 7862181538
@@ -1608,7 +1607,7 @@ async def send_movie_request_to_admins(client: Client, movie_name: str, user_id:
                 reply_markup=buttons
             )
 
-# বাটন ক্লিক হ্যান্ডলার (Approve/Reject)
+# Approve/Reject বাটন হ্যান্ডলার
 @Client.on_callback_query(filters.regex(r"^(approve|reject)_(\d+)_(.+)"))
 async def approve_or_reject_request(client, callback_query):
     action, user_id, movie_name = callback_query.data.split("_", 2)
@@ -1617,25 +1616,54 @@ async def approve_or_reject_request(client, callback_query):
     if callback_query.from_user.id != ADMIN_ID:
         return await callback_query.answer("You are not authorized.", show_alert=True)
 
+    # মুভির ডিটেলস আনো
+    movie_details = await get_movie_details(movie_name)
+    if not movie_details:
+        poster_url = None
+        overview = "No description available."
+    else:
+        poster_path = movie_details.get("poster_path")
+        poster_url = f"https://image.tmdb.org/t/p/w500{poster_path}" if poster_path else None
+        overview = movie_details.get("overview", "No description available.")
+
+    status_text = "✅ Your requested movie has been **Accepted** and uploaded successfully!" if action == "approve" else "❌ Sorry, your requested movie has been **Rejected**."
+
+    caption = f"""
+🎬 **{movie_name}**
+📝 **Description:** {overview[:400]}...
+    
+{status_text}
+"""
+
+    # মেসেজ পাঠাও ইউজারের কাছে
+    if poster_url:
+        await client.send_photo(
+            chat_id=user_id,
+            photo=poster_url,
+            caption=caption
+        )
+    else:
+        await client.send_message(
+            chat_id=user_id,
+            text=caption
+        )
+
+    # ডেটাবেজ থেকে রিকোয়েস্ট ডিলিট করো
+    await delete_movie_request(user_id, movie_name)
+
+    # অ্যাডমিনের মেসেজ এডিট করো
     if action == "approve":
-        text = f"✅ Your requested movie `{movie_name}` has been uploaded successfully! Check it out!"
-        await delete_movie_request(user_id, movie_name)
-        await client.send_message(user_id, text)
         await callback_query.edit_message_caption(
             caption=f"✅ Approved!\n\n🎬 `{movie_name}`\n👤 [User](tg://user?id={user_id})",
             reply_markup=None
         )
-
     elif action == "reject":
-        text = f"❌ Sorry, your requested movie `{movie_name}` could not be uploaded."
-        await delete_movie_request(user_id, movie_name)
-        await client.send_message(user_id, text)
         await callback_query.edit_message_caption(
             caption=f"❌ Rejected!\n\n🎬 `{movie_name}`\n👤 [User](tg://user?id={user_id})",
             reply_markup=None
         )
 
-# রিকোয়েস্ট লিস্ট দেখানোর হ্যান্ডলার (শুধুমাত্র অ্যাডমিন)
+# রিকোয়েস্ট লিস্ট
 @Client.on_message(filters.command("requestlist") & filters.user(ADMIN_ID))
 async def request_list(client, message: Message):
     data = await get_all_requests()
@@ -1648,7 +1676,7 @@ async def request_list(client, message: Message):
 
     await message.reply(text)
 
-# সব রিকোয়েস্ট ক্লিয়ার করার হ্যান্ডলার
+# সব রিকোয়েস্ট ক্লিয়ার
 @Client.on_message(filters.command("clearrequests") & filters.user(ADMIN_ID))
 async def clear_requests(client, message: Message):
     await clear_all_requests()
