@@ -17,17 +17,15 @@ from database.ia_filterdb import col, sec_col, get_file_details, unpack_new_file
 from database.users_chats_db import db
 from database.join_reqs import JoinReqs
 from info import (
-    CLONE_MODE, OWNER_LNK, REACTIONS, CHANNELS, REQUEST_TO_JOIN_MODE, TRY_AGAIN_BTN,
-    ADMINS, SHORTLINK_MODE, PREMIUM_AND_REFERAL_MODE, STREAM_MODE, AUTH_CHANNEL,
-    REFERAL_PREMEIUM_TIME, REFERAL_COUNT, PAYMENT_TEXT, PAYMENT_QR, LOG_CHANNEL,
-    PICS, BATCH_FILE_CAPTION, CUSTOM_FILE_CAPTION, PROTECT_CONTENT, CHNL_LNK,
-    GRP_LNK, REQST_CHANNEL, SUPPORT_CHAT, MAX_B_TN, VERIFY, SHORTLINK_API,
-    SHORTLINK_URL, TUTORIAL, VERIFY_TUTORIAL, IS_TUTORIAL, URL
+    CLONE_MODE, OWNER_LNK, REACTIONS, CHANNELS, REQUEST_TO_JOIN_MODE, TRY_AGAIN_BTN, ADMINS, SHORTLINK_MODE,
+    PREMIUM_AND_REFERAL_MODE, STREAM_MODE, AUTH_CHANNEL, REFERAL_PREMEIUM_TIME, REFERAL_COUNT,
+    PAYMENT_TEXT, PAYMENT_QR, LOG_CHANNEL, PICS, BATCH_FILE_CAPTION, CUSTOM_FILE_CAPTION, PROTECT_CONTENT,
+    CHNL_LNK, GRP_LNK, REQST_CHANNEL, SUPPORT_CHAT, MAX_B_TN, VERIFY, SHORTLINK_API, SHORTLINK_URL,
+    TUTORIAL, VERIFY_TUTORIAL, IS_TUTORIAL, URL
 )
 from utils import (
-    get_settings, pub_is_subscribed, get_size, is_subscribed,
-    save_group_settings, temp, verify_user, check_token, check_verification,
-    get_token, get_shortlink, get_tutorial, get_seconds
+    get_settings, pub_is_subscribed, get_size, is_subscribed, save_group_settings,
+    temp, verify_user, check_token, check_verification, get_token, get_shortlink, get_tutorial, get_seconds
 )
 from TechVJ.util.file_properties import get_name, get_hash, get_media_file_size
 
@@ -38,6 +36,17 @@ TMDB_API_KEY = "c3443ed2f96cd615e3badf6b68c8a689"
 TMDB_RANDOM_MOVIE_API = "https://api.themoviedb.org/3/discover/movie"
 TMDB_RANDOM_TV_API = "https://api.themoviedb.org/3/discover/tv"
 IMAGE_PATH = "https://image.tmdb.org/t/p/original"
+
+# যদি ব্যাকড্রপ ইমেজ আনতে না পারে তখন দেখানোর ফিক্সড কিছু ইমেজ
+DEFAULT_BACKDROP_IMAGES = [
+    "https://files.catbox.moe/t3uivc.jpg",
+    "https://i.ibb.co/pB4yG84v/file-1300.jpg",
+    "https://i.ibb.co/KpX2qZJx/file-1298.jpg",
+    "https://i.ibb.co/Sw6RB9hL/file-1299.jpg",
+    "https://i.ibb.co/b5JJcfZm/file-1301.jpg",
+    "https://i.ibb.co/N6v06yzq/file-1302.jpg",
+    "https://i.ibb.co/Kc5HY6Fk/file-1303.jpg"
+]
 
 # Backdrop ইমেজ আনার ফাংশন (aiohttp দিয়ে)
 async def get_backdrop_list():
@@ -160,9 +169,14 @@ async def start(client, message):
                 parse_mode=enums.ParseMode.HTML
             )
         else:
-            await message.reply_text(
-                "ব্যাকড্রপ ইমেজ আনতে সমস্যা হয়েছে!",
-                reply_markup=reply_markup
+            # যদি TMDB ব্যাকড্রপ না পায় তাহলে তোমার দেওয়া ইমেজ থেকে র‍্যান্ডম দেখাবে
+            await message.reply_photo(
+                photo=random.choice(DEFAULT_BACKDROP_IMAGES),
+                caption=script.START_TXT.format(
+                    message.from_user.mention, temp.U_NAME, temp.B_NAME
+                ),
+                reply_markup=reply_markup,
+                parse_mode=enums.ParseMode.HTML
             )
         return
     
@@ -1491,7 +1505,7 @@ async def purge_requests(client, message):
 #requestbot
 
 from pyrogram import Client, filters
-from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+from pyrogram.types import Message
 from database.gfilters_mdb import add_movie_request, delete_movie_request, get_all_requests, clear_all_requests
 from datetime import datetime
 
@@ -1555,64 +1569,23 @@ async def send_movie_request_to_admins(client: Client, movie_name: str, user_id:
 
 ━━━━━━━━━━━━━━━━━━━━━━
 
-🔵 **Broadcast Commands** (Click and Copy):
+✏️ **Manual Notification Template:**
 
-```/broadcast_user_request {user_id} {movie_name} Uploaded```
-```/broadcast_user_request {user_id} {movie_name} UploadSoon```
-```/broadcast_user_request {user_id} {movie_name} NeverUploaded```
+✅ Uploaded:
+`/broadcast_user_request {user_id} {movie_name} Uploaded`
+
+⏳ Upload Soon:
+`/broadcast_user_request {user_id} {movie_name} UploadSoon`
+
+🚫 Never Uploaded:
+`/broadcast_user_request {user_id} {movie_name} NeverUploaded`
 """
-
-    keyboard = InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton("✅ Uploaded", callback_data=f"uploaded_{user_id}|{movie_name}"),
-            InlineKeyboardButton("⏳ Upload Soon", callback_data=f"uploadsoon_{user_id}|{movie_name}"),
-            InlineKeyboardButton("🚫 Never Uploaded", callback_data=f"neveruploaded_{user_id}|{movie_name}")
-        ]
-    ])
 
     await client.send_message(
         chat_id=chat_id,
         text=text,
-        reply_markup=keyboard,
         disable_web_page_preview=True
     )
-
-# CallbackQuery হ্যান্ডলার
-@Client.on_callback_query()
-async def callback_handler(client, query: CallbackQuery):
-    data = query.data
-    if "|" not in data:
-        return
-
-    action, rest = data.split("_", 1)
-    user_id, movie_name = rest.split("|", 1)
-
-    user_id = int(user_id)
-
-    if action == "uploaded":
-        msg = f"✅ Your requested movie `{movie_name}` has been uploaded successfully! Check it out!"
-    elif action == "uploadsoon":
-        msg = f"⏳ Your requested movie `{movie_name}` will be uploaded soon. Stay tuned!"
-    elif action == "neveruploaded":
-        msg = f"🚫 Sorry, the requested movie `{movie_name}` cannot be uploaded."
-    else:
-        return await query.answer("Invalid action.", show_alert=True)
-
-    try:
-        await client.send_message(
-            chat_id=user_id,
-            text=msg
-        )
-        await delete_movie_request(user_id, movie_name)
-        await query.answer("Notification sent to user.", show_alert=True)
-
-        # Callback মেসেজ এডিট করা
-        await query.message.edit_text(
-            query.message.text.markdown.replace('📩 **New Movie Request Received**', '✅ **Request Processed**')
-        )
-
-    except Exception as e:
-        await query.answer(f"Failed: {e}", show_alert=True)
 
 # ম্যানুয়াল Broadcast Command হ্যান্ডলার
 @Client.on_message(filters.command("broadcast_user_request") & filters.user(ADMIN_ID))
