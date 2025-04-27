@@ -17,6 +17,56 @@ from urllib.parse import quote_plus
 from TechVJ.util.file_properties import get_name, get_hash, get_media_file_size
 logger = logging.getLogger(__name__)
 
+
+
+
+import random
+import requests
+
+# TMDB API কী
+TMDB_API_KEY = 'c3443ed2f96cd615e3badf6b68c8a689'
+TMDB_BASE_URL = 'https://api.themoviedb.org/3'
+
+# TMDB API থেকে রেনডম মুভি ব্যাকড্রপ ইমেজ ফাংশন
+def get_random_movie_backdrop():
+    try:
+        # TMDB API থেকে জনপ্রিয় মুভির তথ্য নিয়ে আসা
+        popular_movies_url = f"{TMDB_BASE_URL}/movie/popular?api_key={TMDB_API_KEY}&language=en-US&page=1"
+        response = requests.get(popular_movies_url).json()
+
+        if response['results']:
+            # রেনডম মুভি নির্বাচন
+            random_movie = random.choice(response['results'])
+            backdrop_path = random_movie.get('backdrop_path')
+
+            if backdrop_path:
+                # ব্যাকড্রপ ইমেজের পূর্ণ URL তৈরি করা
+                return f"https://image.tmdb.org/t/p/w500{backdrop_path}"
+            else:
+                return None
+        else:
+            return None
+    except Exception as e:
+        print(f"Error fetching movie backdrop: {e}")
+        return None
+
+# যেখানে আপনি TMDB থেকে ইমেজটি ব্যবহার করতে চান
+photo = get_random_movie_backdrop()
+
+# এখন `photo` এর মধ্যে একটি রেনডম ব্যাকড্রপ ইমেজের লিঙ্ক থাকবে
+print(photo)  # আপনি এখানে লিঙ্ক দেখতে পাবেন
+
+
+
+
+
+
+
+
+
+
+
+
 BATCH_FILES = {}
 join_db = JoinReqs
 
