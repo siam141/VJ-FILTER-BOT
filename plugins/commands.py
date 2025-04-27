@@ -1507,7 +1507,9 @@ async def purge_requests(client, message):
 from pyrogram import Client, filters
 from pyrogram.types import Message
 from database.gfilters_mdb import add_movie_request, delete_movie_request, get_all_requests, clear_all_requests
+from helper.tmdb import search_movie  # টিএমডিবি সার্চ ইম্পোর্ট
 from datetime import datetime
+import asyncio
 
 # চ্যানেল ও অ্যাডমিন আইডি
 LOG_CHANNEL = -1002589776901
@@ -1522,16 +1524,40 @@ async def handle_request(client, message: Message):
     movie_name = " ".join(message.command[1:])
     user = message.from_user
 
-    # ডেটাবেজে রিকোয়েস্ট সেভ করুন
-    await add_movie_request(user.id, movie_name)
+    # TMDb দিয়ে মুভি সার্চ
+    search_results = await search_movie(movie_name)
 
-    # অ্যাডমিন এবং লগ চ্যানেলে নোটিফিকেশন পাঠান
-    await send_movie_request_to_admins(client, movie_name, user.id, user.first_name, LOG_CHANNEL)
+    if not search_results:
+        return await message.reply(
+            f"❌ No movie found with name `{movie_name}`.\nPlease check the spelling or try again.",
+            quote=True
+        )
+
+    # সবচেয়ে কাছাকাছি রেজাল্ট বের করো
+    top_result = search_results[0]
+    confirmed_movie_name = top_result.get("title")
+
+    # যদি ইউজারের দেওয়া নামের সাথে পুরোপুরি না মেলে, সাজেশন দাও
+    if confirmed_movie_name.lower() != movie_name.lower():
+        suggestions = "\n".join(
+            [f"`{movie.get('title')}` ({movie.get('release_date', 'N/A')[:4]})" for movie in search_results[:5]]
+        )
+        return await message.reply(
+            f"❗ Did you mean one of these?\n\n{suggestions}\n\n"
+            "Please use the exact movie name and try again.",
+            quote=True
+        )
+
+    # ডেটাবেজে রিকোয়েস্ট সেভ করো
+    await add_movie_request(user.id, confirmed_movie_name)
+
+    # অ্যাডমিন এবং লগ চ্যানেলে নোটিফিকেশন পাঠাও
+    await send_movie_request_to_admins(client, confirmed_movie_name, user.id, user.first_name, LOG_CHANNEL)
     if LOG_CHANNEL != ADMIN_ID:
-        await send_movie_request_to_admins(client, movie_name, user.id, user.first_name, ADMIN_ID)
+        await send_movie_request_to_admins(client, confirmed_movie_name, user.id, user.first_name, ADMIN_ID)
 
     await message.reply(
-        f"✅ Your request for `{movie_name}` has been submitted successfully!\n"
+        f"✅ Your request for `{confirmed_movie_name}` has been submitted successfully!\n"
         "You will be notified once it is available.",
         quote=True
     )
@@ -1621,6 +1647,8 @@ async def broadcast_user_request(client, message: Message):
 
     except Exception as e:
         await message.reply(f"⚠️ Error: {e}")
+
+
 
 #brodcat_user
 
