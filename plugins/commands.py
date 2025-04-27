@@ -18,31 +18,32 @@ from database.users_chats_db import db
 from database.join_reqs import JoinReqs
 from info import (
     CLONE_MODE, OWNER_LNK, REACTIONS, CHANNELS, REQUEST_TO_JOIN_MODE, TRY_AGAIN_BTN,
-    ADMINS, SHORTLINK_MODE, PREMIUM_AND_REFERAL_MODE, STREAM_MODE, AUTH_CHANNEL, 
+    ADMINS, SHORTLINK_MODE, PREMIUM_AND_REFERAL_MODE, STREAM_MODE, AUTH_CHANNEL,
     REFERAL_PREMEIUM_TIME, REFERAL_COUNT, PAYMENT_TEXT, PAYMENT_QR, LOG_CHANNEL,
-    PICS, BATCH_FILE_CAPTION, CUSTOM_FILE_CAPTION, PROTECT_CONTENT, CHNL_LNK, 
-    GRP_LNK, REQST_CHANNEL, SUPPORT_CHAT, MAX_B_TN, VERIFY, SHORTLINK_API, 
+    PICS, BATCH_FILE_CAPTION, CUSTOM_FILE_CAPTION, PROTECT_CONTENT, CHNL_LNK,
+    GRP_LNK, REQST_CHANNEL, SUPPORT_CHAT, MAX_B_TN, VERIFY, SHORTLINK_API,
     SHORTLINK_URL, TUTORIAL, VERIFY_TUTORIAL, IS_TUTORIAL, URL
 )
 from utils import (
-    get_settings, pub_is_subscribed, get_size, is_subscribed, save_group_settings,
-    temp, verify_user, check_token, check_verification, get_token, get_shortlink,
-    get_tutorial, get_seconds
+    get_settings, pub_is_subscribed, get_size, is_subscribed,
+    save_group_settings, temp, verify_user, check_token, check_verification,
+    get_token, get_shortlink, get_tutorial, get_seconds
 )
 from TechVJ.util.file_properties import get_name, get_hash, get_media_file_size
 
 logger = logging.getLogger(__name__)
 
-# TMDB Configuration
+# TMDB Config
 TMDB_API_KEY = "c3443ed2f96cd615e3badf6b68c8a689"
 TMDB_RANDOM_MOVIE_API = "https://api.themoviedb.org/3/discover/movie"
 TMDB_RANDOM_TV_API = "https://api.themoviedb.org/3/discover/tv"
 IMAGE_PATH = "https://image.tmdb.org/t/p/original"
 
+# Backdrop ইমেজ আনার ফাংশন
 async def get_backdrop_list():
     pics = []
     try:
-        for _ in range(5):  # ৫টা ব্যাকড্রপ আনবে
+        for _ in range(5):  # ৫টা random ব্যাকড্রপ আনবে
             endpoint = random.choice([TMDB_RANDOM_MOVIE_API, TMDB_RANDOM_TV_API])
             params = {
                 "api_key": TMDB_API_KEY,
@@ -50,7 +51,7 @@ async def get_backdrop_list():
                 "page": random.randint(1, 500),
             }
             response = requests.get(endpoint, params=params)
-            response.raise_for_status()  # যদি HTTP error হয়
+            response.raise_for_status()
             data = response.json()
             results = data.get("results", [])
 
@@ -68,6 +69,7 @@ async def get_backdrop_list():
 BATCH_FILES = {}
 join_db = JoinReqs
 
+# Start কমান্ড হ্যান্ডলার
 @Client.on_message(filters.command("start") & filters.incoming)
 async def start(client, message):
     try:
@@ -105,7 +107,7 @@ async def start(client, message):
             await db.add_chat(message.chat.id, message.chat.title)
         return
 
-    # Private Chat Start
+    # Private চ্যাটের জন্য
     if not await db.is_user_exist(message.from_user.id):
         await db.add_user(message.from_user.id, message.from_user.first_name)
         await client.send_message(
@@ -116,7 +118,7 @@ async def start(client, message):
             )
         )
 
-    # Check if Start Command has a Parameter
+    # Start Parameter থাকলে
     if len(message.command) != 2:
         buttons = [
             [InlineKeyboardButton('⤬ ᴀᴅᴅ ᴍᴇ ᴛᴏ ʏᴏᴜʀ ɢʀᴏᴜᴘ ⤬', url=f'http://t.me/{temp.U_NAME}?startgroup=true')],
@@ -135,7 +137,7 @@ async def start(client, message):
 
         reply_markup = InlineKeyboardMarkup(buttons)
 
-        # Sticker Send
+        # Sticker পাঠানো
         try:
             m = await message.reply_sticker("CAACAgIAAxkBAAICOmgJxuNw-rCgpSyhVl3-m3n_VlpAAAK0IwACmEspSN65vs0qW-TZHgQ")
             await asyncio.sleep(1)
@@ -143,7 +145,7 @@ async def start(client, message):
         except Exception:
             pass
 
-        # Get Backdrop Images
+        # Backdrop ইমেজ আনবে
         pics = await get_backdrop_list()
 
         if pics:
