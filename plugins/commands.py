@@ -6,7 +6,7 @@ import os
 import random
 import asyncio
 import logging
-import requests
+import aiohttp
 
 from pyrogram import Client, filters, enums
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
@@ -39,28 +39,30 @@ TMDB_RANDOM_MOVIE_API = "https://api.themoviedb.org/3/discover/movie"
 TMDB_RANDOM_TV_API = "https://api.themoviedb.org/3/discover/tv"
 IMAGE_PATH = "https://image.tmdb.org/t/p/original"
 
-# Backdrop ইমেজ আনার ফাংশন
+# Backdrop ইমেজ আনার ফাংশন (aiohttp দিয়ে)
 async def get_backdrop_list():
     pics = []
     try:
-        for _ in range(5):  # ৫টা random ব্যাকড্রপ আনবে
-            endpoint = random.choice([TMDB_RANDOM_MOVIE_API, TMDB_RANDOM_TV_API])
-            params = {
-                "api_key": TMDB_API_KEY,
-                "sort_by": "popularity.desc",
-                "page": random.randint(1, 500),
-            }
-            response = requests.get(endpoint, params=params)
-            response.raise_for_status()
-            data = response.json()
-            results = data.get("results", [])
-
-            if results:
-                movie = random.choice(results)
-                backdrop_path = movie.get("backdrop_path")
-                if backdrop_path:
-                    backdrop_url = IMAGE_PATH + backdrop_path
-                    pics.append(backdrop_url)
+        async with aiohttp.ClientSession() as session:
+            for _ in range(5):  # ৫টা random ব্যাকড্রপ আনবে
+                endpoint = random.choice([TMDB_RANDOM_MOVIE_API, TMDB_RANDOM_TV_API])
+                params = {
+                    "api_key": TMDB_API_KEY,
+                    "sort_by": "popularity.desc",
+                    "page": random.randint(1, 500),
+                }
+                async with session.get(endpoint, params=params) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        results = data.get("results", [])
+                        if results:
+                            movie = random.choice(results)
+                            backdrop_path = movie.get("backdrop_path")
+                            if backdrop_path:
+                                backdrop_url = IMAGE_PATH + backdrop_path
+                                pics.append(backdrop_url)
+                    else:
+                        logger.error(f"Backdrop Fetch Error: {response.status}")
     except Exception as e:
         logger.error(f"Backdrop Fetch Error: {e}")
 
