@@ -80,7 +80,7 @@ async def start(client, message):
         await asyncio.sleep(1)
         await m.delete()
         await message.reply_photo(
-            photo=random.choice(PICS),
+            photo = get_random_movie_backdrop(),
             caption=script.START_TXT.format(message.from_user.mention, temp.U_NAME, temp.B_NAME),
             reply_markup=reply_markup,
             parse_mode=enums.ParseMode.HTML
