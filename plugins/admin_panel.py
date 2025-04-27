@@ -56,3 +56,20 @@ async def movie_detail_handler(client, query):
                 await query.message.edit(text)
     except Exception as e:
         await query.message.edit(f"Error fetching movie details.\n\n{e}")
+
+
+from database.gfilters_mdb import get_top_voted_requests
+
+ADMINS = [7862181538]  # তোমার এডমিন ইউজার আইডি দাও
+
+@Client.on_message(filters.command("topvotes") & filters.user(ADMINS))
+async def top_voted_requests(client, message):
+    top_requests = await get_top_voted_requests()
+    if not top_requests:
+        return await message.reply_text("কোনো ভোটিং ডেটা পাওয়া যায়নি।")
+
+    text = "**🏆 Top Voted Requests:**\n\n"
+    for req in top_requests:
+        text += f"🎬 {req['movie_name']} — {req['votes']} ভোট\n"
+
+    await message.reply_text(text)
