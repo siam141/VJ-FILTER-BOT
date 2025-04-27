@@ -1709,3 +1709,61 @@ async def broadcast_to_specific_user(bot: Client, message: Message):
 
     except Exception as e:
         await message.reply(f"❌ মেসেজ পাঠানো যায়নি।\nকারণ: `{str(e)}`")
+
+
+
+
+
+
+
+
+#ঢচভচমচমছযথয
+
+
+
+
+
+from database.gfilters_mdb import vote_request
+
+@Client.on_callback_query(filters.regex(r"vote_yes_(\d+)"))
+async def vote_yes(client, callback_query):
+    message_id = int(callback_query.data.split("_")[-1])
+    user_id = callback_query.from_user.id
+
+    result = await vote_request(message_id, user_id, "yes")
+    if result == "already_voted":
+        await callback_query.answer("আপনি আগে থেকেই ভোট দিয়েছেন!", show_alert=True)
+    else:
+        await callback_query.answer("✅ আপনার ভোট রেকর্ড করা হয়েছে।")
+
+@Client.on_callback_query(filters.regex(r"vote_no_(\d+)"))
+async def vote_no(client, callback_query):
+    message_id = int(callback_query.data.split("_")[-1])
+    user_id = callback_query.from_user.id
+
+    result = await vote_request(message_id, user_id, "no")
+    if result == "already_voted":
+        await callback_query.answer("আপনি আগে থেকেই ভোট দিয়েছেন!", show_alert=True)
+    else:
+        await callback_query.answer("✅ আপনার ভোট রেকর্ড করা হয়েছে।")
+
+
+
+
+
+
+def vote_buttons(message_id):
+    buttons = [
+        [
+            InlineKeyboardButton("✅ YES", callback_data=f"vote_yes_{message_id}"),
+            InlineKeyboardButton("❌ NO", callback_data=f"vote_no_{message_id}")
+        ]
+    ]
+    return InlineKeyboardMarkup(buttons)
+
+
+
+
+
+
+
