@@ -1,6 +1,6 @@
 import aiohttp
 
-TMDB_API_KEY = "তোমার TMDB API KEY এখানে"  # অবশ্যই তোমার TMDB API KEY বসাও!
+TMDB_API_KEY = "c3443ed2f96cd615e3badf6b68c8a689"  # অবশ্যই তোমার TMDB API KEY বসাও!
 
 # মুভি সার্চ
 async def search_movie(query):
