@@ -4,7 +4,7 @@ import aiohttp
 
 TMDB_API = "c3443ed2f96cd615e3badf6b68c8a689"
 
-@Client.on_message(filters.command("start"))
+@Client.on_message(filters.command("/admins"))
 async def start(client, message):
     buttons = [
         [InlineKeyboardButton("Trending Movies", callback_data="trending_movies")]
