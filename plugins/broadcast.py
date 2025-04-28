@@ -283,4 +283,26 @@ async def cancel_request(client: Client, message: Message):
 
 
 
+#listmoviestoday
+
+
+from pyrogram import Client, filters
+from database.todaymovies import get_today_movies
+
+@Client.on_message(filters.command("listtoday") & filters.private)
+async def list_today(client, message):
+    movies = await get_today_movies()
+    if not movies:
+        await message.reply_text("আজকের জন্য কোনো মুভি পাওয়া যায়নি।")
+        return
+    
+    text = "**আজকের আপলোড করা মুভির তালিকা:**\n\n"
+    for idx, movie in enumerate(movies, 1):
+        text += f"**{idx}.** {movie['title']}\n"
+
+    await message.reply_text(text)
+
+
+
+
 
