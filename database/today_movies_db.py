@@ -31,6 +31,12 @@ async def get_today_movies():
     movies = await movie_list_col.find({"time": {"$gte": yesterday}}).to_list(length=100)
     return movies
 
+# Clear all movies added today
+async def clear_today_movies():
+    now = datetime.utcnow()
+    yesterday = now - timedelta(hours=24)
+    await movie_list_col.delete_many({"time": {"$gte": yesterday}})
+
 # Clear all movies from the database
 async def clear_all_movies():
     await movie_list_col.delete_many({})
