@@ -73,7 +73,6 @@ async def post_today_movies(client, message):
             text,
             reply_markup=InlineKeyboardMarkup(buttons),
             disable_web_page_preview=True,
-            caption="**🎬 Today's Movie Collection**",
             parse_mode="Markdown"
         )
         # Notify in the chat after posting
