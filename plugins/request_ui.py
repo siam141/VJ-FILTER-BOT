@@ -8,7 +8,7 @@ LOG_CHANNEL = -1002589776901
 ADMIN_IDS = [7862181538]  # যদি একাধিক অ্যাডমিন থাকে তাহলে এখানে লিস্ট করো
 
 # ইউজার রিকোয়েস্ট হ্যান্ডলার
-@Client.on_message(filters.command("requestbots") & filters.private)
+@Client.on_message(filters.command("requgestbots") & filters.private)
 async def handle_request(client: Client, message: Message):
     if len(message.command) < 2:
         return await message.reply("❌ Usage: `/requestbot Movie Name`", quote=True)
