@@ -80,3 +80,15 @@ async def clear_movie_list(client, message):
         await message.reply("✅ Today's movie list has been cleared successfully!")
     else:
         await message.reply("❌ Failed to clear the movie list. Please try again.")
+
+
+
+
+
+@Client.on_message(filters.command("clear_list") & filters.user(ADMIN_ID))
+async def clear_movie_list(client, message):
+    # Clear the movie list in your database
+    await clear_all_movies()  # This will now work after implementation
+    
+    # Notify the admin
+    await message.reply("✅ Today's movie list has been cleared successfully!")
