@@ -97,3 +97,14 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         logging.info('Service Stopped Bye 👋')
 
+
+
+
+
+import asyncio
+from database.postlist_db import clear_posts
+
+async def auto_clear_posts():
+    while True:
+        await asyncio.sleep(43200)  # 12 ঘন্টা = 43200 সেকেন্ড
+        await clear_posts()
