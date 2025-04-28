@@ -85,10 +85,16 @@ async def clear_movie_list(client, message):
 
 
 
-@Client.on_message(filters.command("clear_list") & filters.user(ADMIN_ID))
-async def clear_movie_list(client, message):
-    # Clear the movie list in your database
-    await clear_all_movies()  # This will now work after implementation
+from pyrogram import Client, filters
+from database.today_movies_db import get_today_movies, clear_today_movies  # Now importing clear_today_movies
+
+POST_CHANNEL_ID = -1002589776901  # Put your actual post channel ID here
+ADMIN_ID = 7862181538  # Replace with your actual admin ID
+
+@Client.on_message(filters.command("clear_today_list") & filters.user(ADMIN_ID))
+async def clear_today_movie_list(client, message):
+    # Clear today's movie list in the database
+    await clear_today_movies()  # This will now work after implementation
     
     # Notify the admin
     await message.reply("✅ Today's movie list has been cleared successfully!")
