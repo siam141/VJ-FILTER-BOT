@@ -92,7 +92,7 @@ async def broadcast_group(bot, message):
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from database.request_db import RequestDatabase
-from utils.formatters import format_request
+from formatters import format_request
 from info import ADMINS, LOG_CHANNEL
 
 db = RequestDatabase()
