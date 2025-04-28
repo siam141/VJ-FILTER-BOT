@@ -2,7 +2,7 @@ import requests
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from pyrogram.errors import FloodWait
-
+ADMIN_ID = 7862181538  # আপনার আসল অ্যাডমিন আইডি দিয়ে পরিবর্তন করুন
 TMDB_API_KEY = "c3443ed2f96cd615e3badf6b68c8a689"  # Replace with your TMDB API key
 POST_CHANNEL_ID = -1002589776901  # Your default post channel ID (you can change this)
 
