@@ -484,16 +484,22 @@ async def start(client, message):
         return    
         
     elif data.startswith("files"):
-        user = message.from_user.id
-        if temp.SHORT.get(user)==None:
-            await message.reply_text(text="<b>Please Search Again in Group</b>")
-        return
-        else:
-            chat_id = temp.SHORT.get(user)
-        settings = await get_settings(chat_id)
-        pre = 'filep' if settings['file_secure'] else 'file'
-        if settings['is_shortlink'] and not await db.has_premium_access(user):
-            g = await get_shortlink(chat_id, f"https://telegram.me/{temp.U_NAME}?start={pre}_{file_id}")
+    user = message.from_user.id
+    if temp.SHORT.get(user) == None:
+        # এখানে সরাসরি লিঙ্ক দিন, যা ব্যবহারকারী ক্লিক করলে সেটি ওপেন হবে
+        g = f"https://telegram.me/{temp.U_NAME}?start={pre}_{file_id}"
+        await message.reply_text(
+            text="<b>Please Search Again in Group</b>", 
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton('Click here to search again', url=g)]
+            ])
+        )
+    else:
+        chat_id = temp.SHORT.get(user)
+    settings = await get_settings(chat_id)
+    pre = 'filep' if settings['file_secure'] else 'file'
+    if settings['is_shortlink'] and not await db.has_premium_access(user):
+        g = await get_shortlink(chat_id, f"https://telegram.me/{temp.U_NAME}?start={pre}_{file_id}")
             btn = [[
                 InlineKeyboardButton('ᴅᴏᴡɴʟᴏᴀᴅ ɴᴏᴡ', url=g)
             ]]
