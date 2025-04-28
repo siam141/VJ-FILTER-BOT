@@ -101,10 +101,10 @@ if __name__ == '__main__':
 
 
 
-import asyncio
-from database.postlist_db import clear_posts
+# main.py
 
-async def auto_clear_posts():
-    while True:
-        await asyncio.sleep(43200)  # 12 ঘন্টা = 43200 সেকেন্ড
-        await clear_posts()
+from autoclear import auto_clear_loop
+import asyncio
+
+# main() ফাংশনের ভিতরে
+asyncio.create_task(auto_clear_loop())
