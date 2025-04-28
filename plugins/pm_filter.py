@@ -2910,7 +2910,11 @@ async def manual_filters(client, message, text=False):
                                 settings = await get_settings(message.chat.id)
                                 if settings['auto_ffilter']:
                                     ai_search = True
-                                    reply_msg = await message.reply_text(f"<b><i>Searching For {message.text} 🔍</i></b>")
+                                    reply_msg = await message.reply_text(
+    f"<b>🔎 Searching for</b>\n"
+    f"<code>{message.text}</code>\n\n"
+    f"<i>Please wait while we fetch the best results for you...</i>"
+)
                                     await auto_filter(client, message.text, message, reply_msg, ai_search)
 
                         else:
@@ -2926,7 +2930,11 @@ async def manual_filters(client, message, text=False):
                             try:
                                 if settings['auto_ffilter']:
                                     ai_search = True
-                                    reply_msg = await message.reply_text(f"<b><i>Searching For {message.text} 🔍</i></b>")
+                                    reply_msg = await message.reply_text(
+    f"<b>🔎 Searching for</b>\n"
+    f"<code>{message.text}</code>\n\n"
+    f"<i>Please wait while we fetch the best results for you...</i>"
+)
                                     await auto_filter(client, message.text, message, reply_msg, ai_search)
                                     try:
                                         if settings['auto_delete']:
@@ -2955,7 +2963,11 @@ async def manual_filters(client, message, text=False):
                                 settings = await get_settings(message.chat.id)
                                 if settings['auto_ffilter']:
                                     ai_search = True
-                                    reply_msg = await message.reply_text(f"<b><i>Searching For {message.text} 🔍</i></b>")
+                                    reply_msg = await message.reply_text(
+    f"<b>🔎 Searching for</b>\n"
+    f"<code>{message.text}</code>\n\n"
+    f"<i>Please wait while we fetch the best results for you...</i>"
+)
                                     await auto_filter(client, message.text, message, reply_msg, ai_search)
                     elif btn == "[]":
                         joelkb = await client.send_cached_media(
@@ -2968,7 +2980,11 @@ async def manual_filters(client, message, text=False):
                         try:
                             if settings['auto_ffilter']:
                                 ai_search = True
-                                reply_msg = await message.reply_text(f"<b><i>Searching For {message.text} 🔍</i></b>")
+                                reply_msg = await message.reply_text(
+    f"<b>🔎 Searching for</b>\n"
+    f"<code>{message.text}</code>\n\n"
+    f"<i>Please wait while we fetch the best results for you...</i>"
+)
                                 await auto_filter(client, message.text, message, reply_msg, ai_search)
                                 try:
                                     if settings['auto_delete']:
@@ -2997,7 +3013,11 @@ async def manual_filters(client, message, text=False):
                             settings = await get_settings(message.chat.id)
                             if settings['auto_ffilter']:
                                 ai_search = True
-                                reply_msg = await message.reply_text(f"<b><i>Searching For {message.text} 🔍</i></b>")
+                                reply_msg = await message.reply_text(
+    f"<b>🔎 Searching for</b>\n"
+    f"<code>{message.text}</code>\n\n"
+    f"<i>Please wait while we fetch the best results for you...</i>"
+)
                                 await auto_filter(client, message.text, message, reply_msg, ai_search)
                     else:
                         button = eval(btn)
@@ -3010,7 +3030,11 @@ async def manual_filters(client, message, text=False):
                         try:
                             if settings['auto_ffilter']:
                                 ai_search = True
-                                reply_msg = await message.reply_text(f"<b><i>Searching For {message.text} 🔍</i></b>")
+                                reply_msg = await message.reply_text(
+    f"<b>🔎 Searching for</b>\n"
+    f"<code>{message.text}</code>\n\n"
+    f"<i>Please wait while we fetch the best results for you...</i>"
+)
                                 await auto_filter(client, message.text, message, reply_msg, ai_search)
                                 try:
                                     if settings['auto_delete']:
@@ -3039,7 +3063,11 @@ async def manual_filters(client, message, text=False):
                             settings = await get_settings(message.chat.id)
                             if settings['auto_ffilter']:
                                 ai_search = True
-                                reply_msg = await message.reply_text(f"<b><i>Searching For {message.text} 🔍</i></b>")
+                                reply_msg = await message.reply_text(
+    f"<b>🔎 Searching for</b>\n"
+    f"<code>{message.text}</code>\n\n"
+    f"<i>Please wait while we fetch the best results for you...</i>"
+)
                                 await auto_filter(client, message.text, message, reply_msg, ai_search)
 
                 except Exception as e:
@@ -3078,7 +3106,11 @@ async def global_filters(client, message, text=False):
                                 try:
                                     if settings['auto_ffilter']:
                                         ai_search = True
-                                        reply_msg = await message.reply_text(f"<b><i>Searching For {message.text} 🔍</i></b>")
+                                        reply_msg = await message.reply_text(
+    f"<b>🔎 Searching for</b>\n"
+    f"<code>{message.text}</code>\n\n"
+    f"<i>Please wait while we fetch the best results for you...</i>"
+)
                                         await auto_filter(client, message.text, message, reply_msg, ai_search)
                                         try:
                                             if settings['auto_delete']:
@@ -3107,7 +3139,11 @@ async def global_filters(client, message, text=False):
                                     settings = await get_settings(message.chat.id)
                                     if settings['auto_ffilter']:
                                         ai_search = True
-                                        reply_msg = await message.reply_text(f"<b><i>Searching For {message.text} 🔍</i></b>")
+                                        reply_msg = await message.reply_text(
+    f"<b>🔎 Searching for</b>\n"
+    f"<code>{message.text}</code>\n\n"
+    f"<i>Please wait while we fetch the best results for you...</i>"
+)
                                         await auto_filter(client, message.text, message, reply_msg, ai_search) 
                             else:
                                 try:
@@ -3135,7 +3171,11 @@ async def global_filters(client, message, text=False):
                                 try:
                                     if settings['auto_ffilter']:
                                         ai_search = True
-                                        reply_msg = await message.reply_text(f"<b><i>Searching For {message.text} 🔍</i></b>")
+                                        reply_msg = await message.reply_text(
+    f"<b>🔎 Searching for</b>\n"
+    f"<code>{message.text}</code>\n\n"
+    f"<i>Please wait while we fetch the best results for you...</i>"
+)
                                         await auto_filter(client, message.text, message, reply_msg, ai_search)
                                         try:
                                             if settings['auto_delete']:
@@ -3164,7 +3204,11 @@ async def global_filters(client, message, text=False):
                                     settings = await get_settings(message.chat.id)
                                     if settings['auto_ffilter']:
                                         ai_search = True
-                                        reply_msg = await message.reply_text(f"<b><i>Searching For {message.text} 🔍</i></b>")
+                                        reply_msg = await message.reply_text(
+    f"<b>🔎 Searching for</b>\n"
+    f"<code>{message.text}</code>\n\n"
+    f"<i>Please wait while we fetch the best results for you...</i>"
+)
                                         await auto_filter(client, message.text, message, reply_msg, ai_search)
                             else:
                                 try:
@@ -3190,7 +3234,11 @@ async def global_filters(client, message, text=False):
                             try:
                                 if settings['auto_ffilter']:
                                     ai_search = True
-                                    reply_msg = await message.reply_text(f"<b><i>Searching For {message.text} 🔍</i></b>")
+                                    reply_msg = await message.reply_text(
+    f"<b>🔎 Searching for</b>\n"
+    f"<code>{message.text}</code>\n\n"
+    f"<i>Please wait while we fetch the best results for you...</i>"
+)
                                     await auto_filter(client, message.text, message, reply_msg, ai_search)
                                     try:
                                         if settings['auto_delete']:
@@ -3219,7 +3267,11 @@ async def global_filters(client, message, text=False):
                                 settings = await get_settings(message.chat.id)
                                 if settings['auto_ffilter']:
                                     ai_search = True
-                                    reply_msg = await message.reply_text(f"<b><i>Searching For {message.text} 🔍</i></b>")
+                                    reply_msg = await message.reply_text(
+    f"<b>🔎 Searching for</b>\n"
+    f"<code>{message.text}</code>\n\n"
+    f"<i>Please wait while we fetch the best results for you...</i>"
+)
                                     await auto_filter(client, message.text, message, reply_msg, ai_search) 
                         else:
                             try:
@@ -3246,7 +3298,11 @@ async def global_filters(client, message, text=False):
                             try:
                                 if settings['auto_ffilter']:
                                     ai_search = True
-                                    reply_msg = await message.reply_text(f"<b><i>Searching For {message.text} 🔍</i></b>")
+                                    reply_msg = await message.reply_text(
+    f"<b>🔎 Searching for</b>\n"
+    f"<code>{message.text}</code>\n\n"
+    f"<i>Please wait while we fetch the best results for you...</i>"
+)
                                     await auto_filter(client, message.text, message, reply_msg, ai_search)
                                     try:
                                         if settings['auto_delete']:
@@ -3275,7 +3331,11 @@ async def global_filters(client, message, text=False):
                                 settings = await get_settings(message.chat.id)
                                 if settings['auto_ffilter']:
                                     ai_search = True
-                                    reply_msg = await message.reply_text(f"<b><i>Searching For {message.text} 🔍</i></b>")
+                                    reply_msg = await message.reply_text(
+    f"<b>🔎 Searching for</b>\n"
+    f"<code>{message.text}</code>\n\n"
+    f"<i>Please wait while we fetch the best results for you...</i>"
+)
                                     await auto_filter(client, message.text, message, reply_msg, ai_search)
                         else:
                             try:
