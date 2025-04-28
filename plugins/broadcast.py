@@ -286,23 +286,33 @@ async def cancel_request(client: Client, message: Message):
 #listmoviestoday
 
 
-from pyrogram import Client, filters
-from database.todaymovies import get_today_movies
+from pyrogram import filters
+from pyrogram.types import Message
+from database.postlist_db import get_today_posts, clear_old_posts
+import time
 
-@Client.on_message(filters.command("listtoday") & filters.private)
-async def list_today(client, message):
-    movies = await get_today_movies()
-    if not movies:
-        await message.reply_text("আজকের জন্য কোনো মুভি পাওয়া যায়নি।")
-        return
-    
-    text = "**আজকের আপলোড করা মুভির তালিকা:**\n\n"
-    for idx, movie in enumerate(movies, 1):
-        text += f"**{idx}.** {movie['title']}\n"
+@app.on_message(filters.command("listtoday") & filters.private)
+async def list_today_handler(client, message: Message):
+    await clear_old_posts()
+    posts = await get_today_posts()
 
-    await message.reply_text(text)
+    if not posts:
+        return await message.reply("আজকের জন্য কোনো মুভি আপলোড পাওয়া যায়নি!")
 
+    # সময় হিসাব
+    timestamps = [p['timestamp'] for p in posts]
+    first_upload = min(timestamps)
+    next_reset = first_upload + 12 * 60 * 60
+    remaining_seconds = next_reset - int(time.time())
 
+    hours = remaining_seconds // 3600
+    minutes = (remaining_seconds % 3600) // 60
 
+    timer_text = f"♻️ রিসেট হবে: {hours} ঘণ্টা {minutes} মিনিট পর\n\n"
 
+    text = "⏳ ১২ ঘন্টার মধ্যে আপলোড করা মুভির তালিকা:\n\n"
+    text += "\n".join([f"• {post['title']}" for post in posts])
 
+    full_text = timer_text + text
+
+    await message.reply(full_text)
