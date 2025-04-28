@@ -4,7 +4,7 @@ from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 import re
 
 # TMDB API Key
-TMDB_API_KEY = 'your_tmdb_api_key_here'
+TMDB_API_KEY = 'c3443ed2f96cd615e3badf6b68c8a689'
 POST_CHANNEL_ID = -1002589776901  # Put your actual post channel ID here
 ADMIN_ID = 7862181538  # Replace with your actual admin ID
 
