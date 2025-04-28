@@ -1,63 +1,82 @@
 from pyrogram import Client, filters
-from database.today_movies_db import get_today_movies
-from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from database.today_movies_db import get_today_movies, clear_today_movies  # Make sure to implement clear_today_movies in your DB
 
-POST_CHANNEL_ID = -1002589776901  # আপনার চ্যানেল আইডি এখানে বসিয়েছি
+POST_CHANNEL_ID = -1002589776901  # Put your actual post channel ID here
+ADMIN_ID = 7862181538  # Replace with your actual admin ID
 
 @Client.on_message(filters.command("listtoday"))
 async def list_today_movies(client, message):
+    # Fetch today's movies from your database
     movies = await get_today_movies()
     
     if not movies:
-        await message.reply("❌ আজকের কোনো মুভি পাওয়া যায়নি!")
+        await message.reply("❌ No movies found for today!")
         return
 
+    # Building movie list
     movie_list = ""
     for idx, movie in enumerate(movies, start=1):
-        movie_list += f"**{idx}.** 🎬 {movie['title']}\n\n"
+        movie_title = movie['title'].replace('.', ' ')  # Replace dots with spaces
+        movie_list += f"**{idx}.** 🎬 {movie_title}\n\n"
 
+    # Send the movie list as a reply
     await message.reply(
-        f"**📅 আজকের আপলোড মুভির তালিকা:**\n\n{movie_list}",
+        f"**📅 Today's Movie List:**\n\n{movie_list}",
         quote=True
     )
 
 @Client.on_message(filters.command("postlist"))
 async def post_today_movies(client, message):
+    # Fetch today's movies from your database
     movies = await get_today_movies()
     
     if not movies:
-        await message.reply("❌ আজকের কোনো মুভি নেই পোস্ট করার জন্য!")
+        await message.reply("❌ No movies available to post today!")
         return
 
+    # Build the movie list with buttons
     movie_list = ""
     for idx, movie in enumerate(movies, start=1):
-        movie_title = movie['title'].replace('.', ' ')  # ডটগুলি মুছে ফেলা হচ্ছে
-        movie_list += f"✅ **{idx}.** {movie_title}\n"
+        movie_title = movie['title'].replace('.', ' ')  # Replace dots with spaces
+        movie_list += f"**{idx}.** 🎬 {movie_title}\n\n"
 
     text = f"""
-**🎬 আজকের মুভি কালেকশন:**
+**🎬 Today's Movie Collection:**
 
 {movie_list}
 
 ━━━━━━━━━━━━━━━
 📌 Powered by @YourBotUsername
 
-💡 বাটন ক্লিক করে আজকের মুভি সহজে পেয়ে যান!
+💡 **Click to Copy Movie Title or Watch Now!**
 
+👇👇👇
+🎬 **Get Now**  
+🔍 **Search Now**
 """
+    # Inline buttons setup for action
+    buttons = [
+        [
+            InlineKeyboardButton("Get Now", url="https://www.example.com/movie-link"),  # Replace with actual movie link
+            InlineKeyboardButton("Search Now", url="https://www.example.com/search-now")  # Replace with actual search link
+        ]
+    ]
 
-    # Inline button setup
-    keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("🎥 Get Now", callback_data="post_movie")],  # Callback data for the button
-        [InlineKeyboardButton("🔍 Search Now", url="https://example.com/search")]  # এখানে সার্চ লিঙ্ক দিন
-    ])
+    # Send the post message with inline buttons
+    await client.send_message(
+        POST_CHANNEL_ID,
+        text,
+        reply_markup=InlineKeyboardMarkup(buttons)
+    )
 
-    # Send message with buttons
-    await client.send_message(POST_CHANNEL_ID, text, reply_markup=keyboard)
-
-@Client.on_callback_query(filters.regex("post_movie"))
-async def post_movie_callback(client, callback_query: CallbackQuery):
-    user_id = callback_query.from_user.id  # Get the user ID of the person who clicked the button
-    await callback_query.answer("🎬 আপনি পোস্ট দেওয়ার জন্য প্রস্তুত! এখানে আপনার মুভি পোস্ট করুন।")
-    # আপনি চাইলে এখানে আরও কাস্টমাইজ করা মেসেজও পাঠাতে পারেন
-    await client.send_message(user_id, "📝 আপনি এখন পোস্ট করতে পারবেন! পোস্ট দিন 👇👇👇")
+# Clear list command to delete today's movie list (only admin can do this)
+@Client.on_message(filters.command("clear_list") & filters.user(ADMIN_ID))
+async def clear_movie_list(client, message):
+    # Clear the movie list in your database
+    result = await clear_today_movies()  # Implement this function in your database module to clear the list
+    
+    if result:
+        await message.reply("✅ Today's movie list has been cleared successfully!")
+    else:
+        await message.reply("❌ Failed to clear the movie list. Please try again.")
