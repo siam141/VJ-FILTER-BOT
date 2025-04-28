@@ -209,5 +209,4 @@ async def callback_query(client, callback_query):
         )
 
 # বট শুরু করা
-app.start()
-app.idle()
+app.run()  # app.start() এর পরিবর্তে app.run() ব্যবহার করা হচ্ছে
