@@ -208,5 +208,3 @@ async def callback_query(client, callback_query):
             reply_markup=markup
         )
 
-# বট শুরু করা
-app.run()  # app.start() এর পরিবর্তে app.run() ব্যবহার করা হচ্ছে
