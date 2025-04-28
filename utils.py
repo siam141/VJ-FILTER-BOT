@@ -784,15 +784,3 @@ def get_random_tmdb_backdrop():
 #unikelink
 
 
-import uuid
-
-def generate_unique_movie_link(movie_id: str) -> str:
-    # Generate a unique link using the movie_id or any identifier
-    unique_link = f"https://t.me/botko_movie_downloader_bot/send_movie/{movie_id}/{str(uuid.uuid4())}"
-    return unique_link
-
-
-
-
-
-        
