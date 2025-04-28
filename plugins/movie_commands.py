@@ -73,7 +73,7 @@ async def post_today_movies(client, message):
             text,
             reply_markup=InlineKeyboardMarkup(buttons),
             disable_web_page_preview=True,
-            parse_mode="Markdown"
+            parse_mode="MarkdownV2"  # Changed from "Markdown" to "MarkdownV2"
         )
         # Notify in the chat after posting
         await message.reply("✅ Today's movies have been posted successfully!")
