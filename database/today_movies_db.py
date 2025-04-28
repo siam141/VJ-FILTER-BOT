@@ -9,10 +9,20 @@ db = client[DB_NAME]
 movie_list_col = db.today_movie_list
 
 async def save_movie(title: str):
-    await movie_list_col.insert_one({
+    now = datetime.utcnow()
+    twelve_hours_ago = now - timedelta(hours=12)
+
+    # Check if the same movie was saved within 12 hours
+    existing = await movie_list_col.find_one({
         "title": title,
-        "time": datetime.utcnow()
+        "time": {"$gte": twelve_hours_ago}
     })
+
+    if not existing:
+        await movie_list_col.insert_one({
+            "title": title,
+            "time": now
+        })
 
 async def get_today_movies():
     now = datetime.utcnow()
