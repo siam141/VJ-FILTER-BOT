@@ -316,3 +316,35 @@ async def list_today_handler(client, message: Message):
     full_text = timer_text + text
 
     await message.reply(full_text)
+
+
+
+
+
+
+
+
+
+
+
+from pyrogram import filters
+from pyrogram.types import Message
+from database.postlist_db import get_today_posts
+from info import LOG_CHANNEL  # তোমার লগ চ্যানেল আইডি এখানে থাকবে
+
+@app.on_message(filters.command("postlist") & filters.private)
+async def post_list_handler(client, message: Message):
+    posts = await get_today_posts()
+
+    if not posts:
+        return await message.reply("আজকের জন্য কোনো মুভি আপলোড পাওয়া যায়নি!")
+
+    text = "🎬 আজকের আপলোড হওয়া মুভিগুলো:\n\n"
+    text += "\n".join([f"• {post['title']}" for post in posts])
+
+    await client.send_message(
+        chat_id=LOG_CHANNEL,
+        text=text
+    )
+
+    await message.reply("✅ চ্যানেলে আজকের আপলোডের লিস্ট পোস্ট করা হয়েছে!")
