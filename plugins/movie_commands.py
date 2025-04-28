@@ -80,7 +80,3 @@ async def on_new_movie(client, message):
         # Post movie details using TMDB API
         await post_movie_to_channel(client, cleaned_title)
 
-# Run the client
-app = Client("movie_bot")
-
-app.run()
