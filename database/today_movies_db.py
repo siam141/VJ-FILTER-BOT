@@ -55,12 +55,3 @@ async def clear_all_movies():
 #unikelinpk
 
 
-
-from utils import generate_unique_movie_link
-
-async def add_movie_to_db(movie_data):
-    movie_id = str(uuid.uuid4())  # Generate unique ID for the movie
-    unique_link = generate_unique_movie_link(movie_id)
-    # Add movie to the database, including the unique link
-    movie_data['movie_link'] = unique_link
-    await db.add_movie(movie_data)  # Store the movie in DB, assuming you have this function
