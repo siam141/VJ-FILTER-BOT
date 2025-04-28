@@ -1,22 +1,11 @@
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from database.today_movies_db import get_today_movies, clear_today_movies  # Ensure clear_today_movies is implemented in your DB
+from database.today_movies_db import get_today_movies, clear_today_movies  # Make sure this is implemented in your DB
 
 POST_CHANNEL_ID = -1002589776901  # Put your actual post channel ID here
 ADMIN_ID = 7862181538  # Replace with your actual admin ID
 
-# Function to remove usernames like @username from movie title
-def remove_usernames_from_title(title: str) -> str:
-    import re
-    return re.sub(r'@[\w_]+', '', title).strip()  # Remove '@' followed by word characters or underscores
-
-# Function to format movie genres
-def format_movie_genre(genre: str) -> str:
-    if genre:
-        return f"🎬 Genre: {genre}"
-    return ""
-
-# Command to list today's movies
+# Fetch today's movies and send the list to the user
 @Client.on_message(filters.command("listtoday"))
 async def list_today_movies(client, message):
     # Fetch today's movies from your database
@@ -26,12 +15,11 @@ async def list_today_movies(client, message):
         await message.reply("❌ No movies found for today!")
         return
 
-    # Building movie list
+    # Building the movie list
     movie_list = ""
     for idx, movie in enumerate(movies, start=1):
-        movie_title = remove_usernames_from_title(movie['title']).replace('.', ' ')  # Replace dots with spaces and remove usernames
-        movie_genre = format_movie_genre(movie.get('genre', ''))
-        movie_list += f"**{idx}.** 🎬 {movie_title}\n{movie_genre}\n\n"
+        movie_title = movie['title'].replace('.', ' ')  # Replace dots with spaces
+        movie_list += f"**{idx}.** 🎬 {movie_title}\n\n"
 
     # Send the movie list as a reply
     await message.reply(
@@ -39,7 +27,8 @@ async def list_today_movies(client, message):
         quote=True
     )
 
-# Command to post today's movies to a channel
+
+# Post today's movies in the channel with buttons
 @Client.on_message(filters.command("postlist"))
 async def post_today_movies(client, message):
     # Fetch today's movies from your database
@@ -52,12 +41,8 @@ async def post_today_movies(client, message):
     # Build the movie list with buttons
     movie_list = ""
     for idx, movie in enumerate(movies, start=1):
-        movie_title = remove_usernames_from_title(movie['title']).replace('.', ' ')  # Replace dots with spaces and remove usernames
-        movie_genre = format_movie_genre(movie.get('genre', ''))
-        movie_list += f"**{idx}.** 🎬 {movie_title}\n{movie_genre}\n\n"
-
-    # Movie cover image URL (replace with your actual movie cover URL or path)
-    movie_cover_url = "https://www.example.com/movie-cover.jpg"
+        movie_title = movie['title'].replace('.', ' ')  # Replace dots with spaces
+        movie_list += f"**{idx}.** 🎬 {movie_title}\n\n"
 
     # The post message text
     text = f"""
@@ -69,7 +54,6 @@ async def post_today_movies(client, message):
 📌 Powered by @YourBotUsername
 
 🌟 Enjoy the Movies, and Stay Tuned for More!
-
 """
 
     # Inline buttons setup for action
@@ -82,21 +66,41 @@ async def post_today_movies(client, message):
         ]
     ]
 
-    # Send the post message with inline buttons and movie cover image
-    await client.send_message(
-        POST_CHANNEL_ID,
-        text,
-        reply_markup=InlineKeyboardMarkup(buttons),
-        disable_web_page_preview=True,
-        caption="**🎬 Today's Movie Collection**",
-        parse_mode="Markdown"
-    )
+    try:
+        # Send the post message with inline buttons
+        await client.send_message(
+            POST_CHANNEL_ID,
+            text,
+            reply_markup=InlineKeyboardMarkup(buttons),
+            disable_web_page_preview=True,
+            caption="**🎬 Today's Movie Collection**",
+            parse_mode="Markdown"
+        )
+        # Notify in the chat after posting
+        await message.reply("✅ Today's movies have been posted successfully!")
 
-# Clear list command to delete today's movie list (only admin can do this)
+    except Exception as e:
+        # If there's an error, send the error message
+        await message.reply(f"❌ Failed to post: {e}")
+
+
+# Clear today's movie list (admin only)
 @Client.on_message(filters.command("clear_today_list") & filters.user(ADMIN_ID))
 async def clear_today_movie_list(client, message):
     # Clear today's movie list in the database
-    await clear_today_movies()  # Implement this function in your database module to clear the list
+    await clear_today_movies()  # This will now work after implementation
 
     # Notify the admin
     await message.reply("✅ Today's movie list has been cleared successfully!")
+
+
+# Clear list command to delete today's movie list (only admin can do this)
+@Client.on_message(filters.command("clear_list") & filters.user(ADMIN_ID))
+async def clear_movie_list(client, message):
+    # Clear the movie list in your database
+    result = await clear_today_movies()  # Implement this function in your database module to clear the list
+
+    if result:
+        await message.reply("✅ Today's movie list has been cleared successfully!")
+    else:
+        await message.reply("❌ Failed to clear the movie list. Please try again.")
