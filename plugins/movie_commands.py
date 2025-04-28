@@ -1,16 +1,9 @@
 from pyrogram import Client, filters
 from database.today_movies_db import get_today_movies
-import re
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 
-POST_CHANNEL_ID = -1002589776901  # এখানে তোমার পোস্ট চ্যানেল ID বসাও
+POST_CHANNEL_ID = -1002589776901  # আপনার চ্যানেল আইডি এখানে বসিয়েছি
 
-# ভিডিও ফরম্যাট এক্সটেনশন বাদ দেয়া এবং ডট সরানো
-def clean_movie_title(movie_title):
-    cleaned_title = re.sub(r'\.(mp4|mkv|avi|mov|flv|webm)', '', movie_title, flags=re.IGNORECASE)  # এক্সটেনশন বাদ দেয়া
-    cleaned_title = cleaned_title.replace('.', ' ')  # ডট (.) সরানো
-    return cleaned_title
-
-# আজকের মুভির তালিকা দেখানো
 @Client.on_message(filters.command("listtoday"))
 async def list_today_movies(client, message):
     movies = await get_today_movies()
@@ -21,15 +14,13 @@ async def list_today_movies(client, message):
 
     movie_list = ""
     for idx, movie in enumerate(movies, start=1):
-        cleaned_title = clean_movie_title(movie['title'])  # এক্সটেনশন বাদ দেওয়া এবং ডট সরানো
-        movie_list += f"**🔹 {idx}.** 🎬 {cleaned_title}\n\n"
+        movie_list += f"**{idx}.** 🎬 {movie['title']}\n\n"
 
     await message.reply(
         f"**📅 আজকের আপলোড মুভির তালিকা:**\n\n{movie_list}",
         quote=True
     )
 
-# আজকের মুভি পোস্ট করা
 @Client.on_message(filters.command("postlist"))
 async def post_today_movies(client, message):
     movies = await get_today_movies()
@@ -40,9 +31,8 @@ async def post_today_movies(client, message):
 
     movie_list = ""
     for idx, movie in enumerate(movies, start=1):
-        cleaned_title = clean_movie_title(movie['title'])  # এক্সটেনশন বাদ দেওয়া এবং ডট সরানো
-        movie_list += f"🎬 **{cleaned_title}**\n"
-        movie_list += f"🔹 **{idx}.** {cleaned_title}\n\n"
+        movie_title = movie['title'].replace('.', ' ')  # ডটগুলি মুছে ফেলা হচ্ছে
+        movie_list += f"✅ **{idx}.** {movie_title}\n"
 
     text = f"""
 **🎬 আজকের মুভি কালেকশন:**
@@ -52,23 +42,22 @@ async def post_today_movies(client, message):
 ━━━━━━━━━━━━━━━
 📌 Powered by @YourBotUsername
 
-🔹 **আমাদের সাথে যুক্ত থাকতে**: @YourChannelUsername
+💡 বাটন ক্লিক করে আজকের মুভি সহজে পেয়ে যান!
+
 """
 
-    # এখানে বাটন যুক্ত করা হচ্ছে
-    buttons = [
-        [
-            ("🎬 Get Now", "https://t.me/YourBotUsername?start=movie1"),  # উদাহরণ লিঙ্ক
-            ("🔍 Search Now", "https://www.google.com/search?q=MovieName")  # সার্চ লিঙ্ক
-        ]
-    ]
+    # Inline button setup
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🎥 Get Now", callback_data="post_movie")],  # Callback data for the button
+        [InlineKeyboardButton("🔍 Search Now", url="https://example.com/search")]  # এখানে সার্চ লিঙ্ক দিন
+    ])
 
-    # মুভির নাম কপি করার জন্য ইনলাইন বাটন
-    copy_button = [
-        [
-            ("📋 Copy Title", "copy://{cleaned_title}")  # কপি করার জন্য লিঙ্ক (এটা প্রকৃত কপি লিঙ্ক নয়, উদাহরণ হিসেবে)
-        ]
-    ]
+    # Send message with buttons
+    await client.send_message(POST_CHANNEL_ID, text, reply_markup=keyboard)
 
-    await client.send_message(POST_CHANNEL_ID, text, reply_markup=buttons)
-    await client.send_message(POST_CHANNEL_ID, text, reply_markup=copy_button)
+@Client.on_callback_query(filters.regex("post_movie"))
+async def post_movie_callback(client, callback_query: CallbackQuery):
+    user_id = callback_query.from_user.id  # Get the user ID of the person who clicked the button
+    await callback_query.answer("🎬 আপনি পোস্ট দেওয়ার জন্য প্রস্তুত! এখানে আপনার মুভি পোস্ট করুন।")
+    # আপনি চাইলে এখানে আরও কাস্টমাইজ করা মেসেজও পাঠাতে পারেন
+    await client.send_message(user_id, "📝 আপনি এখন পোস্ট করতে পারবেন! পোস্ট দিন 👇👇👇")
