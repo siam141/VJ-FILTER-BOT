@@ -190,27 +190,24 @@ async def callback_query(client, callback_query):
         # চ্যানেলে মুভি পোস্ট করা
         await post_movie_to_channel(channel_id, movie_id)
         await callback_query.answer("মুভি পোস্ট করা হয়েছে!")
-    
-    # Prev এবং Next বাটন হ্যান্ডলিং
-    elif data.startswith("prev_"):
-        current_page = int(data.split("_")[1]) - 1
-        movie_name = callback_query.message.text.split("\n")[0]  # মুভির নাম ধরছি
-        markup = generate_keyboard(current_page)
-        await callback_query.message.edit(
-            text="মুভি নির্বাচন করুন:",
-            reply_markup=markup
-        )
-        await callback_query.answer("Previous Page")
-    
-    elif data.startswith("next_"):
-        current_page = int(data.split("_")[1]) + 1
-        movie_name = callback_query.message.text.split("\n")[0]  # মুভির নাম ধরছি
-        markup = generate_keyboard(current_page)
-        await callback_query.message.edit(
-            text="মুভি নির্বাচন করুন:",
-            reply_markup=markup
-        )
-        await callback_query.answer("Next Page")
 
-# বট চালু করা
-app.run()
+    # প্রিভিয়াস বা নেক্সট বাটনের জন্য কোড
+    if data.startswith("prev_"):
+        current_page = int(data.split("_")[1]) - 1
+        markup = generate_keyboard(current_page)
+        await callback_query.message.edit(
+            "মুভি নির্বাচন করুন:",
+            reply_markup=markup
+        )
+    
+    if data.startswith("next_"):
+        current_page = int(data.split("_")[1]) + 1
+        markup = generate_keyboard(current_page)
+        await callback_query.message.edit(
+            "মুভি নির্বাচন করুন:",
+            reply_markup=markup
+        )
+
+# বট শুরু করা
+app.start()
+app.idle()
