@@ -82,3 +82,130 @@ async def clear_today_movie_list(client, message):
 
     # Notify the admin
     await message.reply("✅ Today's movie list has been cleared successfully!")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import requests
+from pyrogram import Client, filters
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from pyrogram.errors import FloodWait
+ADMIN_ID = 7862181538  # আপনার আসল অ্যাডমিন আইডি দিয়ে পরিবর্তন করুন
+TMDB_API_KEY = "c3443ed2f96cd615e3badf6b68c8a689"  # Replace with your TMDB API key
+POST_CHANNEL_ID = -1002589776901  # Your default post channel ID (you can change this)
+
+def search_tmdb_movies(query: str):
+    """Search TMDB API for movies and TV series based on the query."""
+    url = f"https://api.themoviedb.org/3/search/multi?api_key={TMDB_API_KEY}&query={query}"
+    response = requests.get(url)
+    return response.json()
+
+@Client.on_message(filters.command("post_movie_poster"))
+async def post_movie_poster(client, message):
+    # Extract the movie or series name from the command
+    query = " ".join(message.command[1:])
+
+    if not query:
+        await message.reply("❌ Please provide a movie or series name!")
+        return
+
+    # Fetch the movies and series from TMDB API
+    results = search_tmdb_movies(query)
+
+    if not results.get('results'):
+        await message.reply("❌ No movies or series found with that name!")
+        return
+
+    # Build a list of movie/series results
+    buttons = []
+    movie_list = "**Found Movies/Series:**\n\n"
+    for idx, result in enumerate(results['results'], start=1):
+        title = result['name'] if result.get('name') else result['title']
+        poster_path = result.get('poster_path')
+        if poster_path:
+            poster_url = f"https://image.tmdb.org/t/p/w500{poster_path}"
+        else:
+            poster_url = "https://via.placeholder.com/500"  # Default image if no poster found
+
+        # Adding button for each result
+        movie_list += f"**{idx}.** {title}\n"
+        buttons.append([InlineKeyboardButton(f"Post Now: {title}", callback_data=f"post_{idx}_{poster_url}_{title}")])
+
+    # Send message with buttons to select movie/series to post
+    await message.reply(
+        movie_list,
+        reply_markup=InlineKeyboardMarkup(buttons)
+    )
+
+@Client.on_callback_query(filters.regex(r"^post_"))
+async def handle_post_button(client, callback_query):
+    # Extract movie/series details from callback data
+    callback_data = callback_query.data.split("_")
+    idx, poster_url, title = callback_data[1], callback_data[2], callback_data[3]
+
+    # Ask the admin for the channel ID to post
+    await callback_query.answer("Please provide the channel ID where you'd like to post the movie/series!")
+
+    await callback_query.message.reply(
+        f"🔴 **{title}**\n\nWould you like to post this movie/series with the poster below?",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("Yes, Post It!", callback_data=f"confirm_post_{idx}_{poster_url}_{title}")],
+            [InlineKeyboardButton("Cancel", callback_data="cancel_post")]
+        ])
+    )
+
+@Client.on_callback_query(filters.regex(r"^confirm_post_"))
+async def confirm_post(client, callback_query):
+    # Extract details from callback data
+    callback_data = callback_query.data.split("_")
+    idx, poster_url, title = callback_data[1], callback_data[2], callback_data[3]
+
+    # Ask for the channel ID to post the movie
+    await callback_query.answer("Please provide the channel ID where you'd like to post the movie/series!")
+
+    # Ask the admin for the channel ID
+    await callback_query.message.reply(
+        f"Please provide the channel ID for posting **{title}**.\n\nYou can get the channel ID from the channel link (e.g., `@your_channel_name`)."
+    )
+
+@Client.on_message(filters.text & filters.user(ADMIN_ID))
+async def post_to_channel(client, message):
+    # Get the movie or series title
+    if message.text.startswith("post_"):
+        # Example: post_1_123456_some_movie_name
+        data = message.text.split("_")
+        idx, poster_url, title = data[1], data[2], data[3]
+
+        # Post message in the channel with movie poster and Get Now button
+        buttons = [
+            [
+                InlineKeyboardButton("Get Now", url=f"https://t.me/your_bot_link/{title}")
+            ]
+        ]
+
+        try:
+            await client.send_photo(
+                POST_CHANNEL_ID,
+                poster_url,
+                caption=f"🎬 **{title}**",
+                reply_markup=InlineKeyboardMarkup(buttons)
+            )
+            await message.reply(f"✅ Movie/Series **{title}** has been successfully posted!")
+        except FloodWait as e:
+            await message.reply(f"⏳ Please wait {e.x} seconds before posting again.")
+
+@Client.on_callback_query(filters.regex("cancel_post"))
+async def cancel_post(client, callback_query):
+    await callback_query.answer("Operation has been canceled.")
+    await callback_query.message.delete()
