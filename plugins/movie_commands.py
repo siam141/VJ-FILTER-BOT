@@ -81,4 +81,4 @@ async def clear_today_movie_list(client, message):
     await clear_today_movies()  # This will now work after implementation
 
     # Notify the admin
-    await message.reply("✅ Today's movie list has been cleared successfully!")
+    await message.reply("✅ Today's movie list has been cleared successfully!")j
