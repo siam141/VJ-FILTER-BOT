@@ -3,7 +3,7 @@ from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from pyrogram.errors import FloodWait
 
-TMDB_API_KEY = "YOUR_TMDB_API_KEY"  # Replace with your TMDB API key
+TMDB_API_KEY = "c3443ed2f96cd615e3badf6b68c8a689"  # Replace with your TMDB API key
 POST_CHANNEL_ID = -1002589776901  # Your default post channel ID (you can change this)
 
 def search_tmdb_movies(query: str):
