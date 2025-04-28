@@ -54,7 +54,11 @@ async def give_filter(client, message):
             try:
                 if settings['auto_ffilter']:
                     ai_search = True
-                    reply_msg = await message.reply_text(f"<b><i>Searching For {message.text} 🔍</i></b>")
+                    reply_msg = await message.reply_text(
+    f"<b>🔎 Searching for</b>\n"
+    f"<code>{message.text}</code>\n\n"
+    f"<i>Please wait while we fetch the best results for you...</i>"
+)
                     await auto_filter(client, message.text, message, reply_msg, ai_search)
             except KeyError:
                 grpid = await active_connection(str(message.from_user.id))
@@ -62,7 +66,11 @@ async def give_filter(client, message):
                 settings = await get_settings(message.chat.id)
                 if settings['auto_ffilter']:
                     ai_search = True
-                    reply_msg = await message.reply_text(f"<b><i>Searching For {message.text} 🔍</i></b>")
+                    reply_msg = await message.reply_text(
+    f"<b>🔎 Searching for</b>\n"
+    f"<code>{message.text}</code>\n\n"
+    f"<i>Please wait while we fetch the best results for you...</i>"
+)
                     await auto_filter(client, message.text, message, reply_msg, ai_search)
     else: #a better logic to avoid repeated lines of code in auto_filter function
         search = message.text
