@@ -16,7 +16,7 @@ API_HASH = environ.get('API_HASH', '')
 BOT_TOKEN = environ.get('BOT_TOKEN', "")
 
 TMDB_API_KEY = "c3443ed2f96cd615e3badf6b68c8a689"
-
+BOT_USERNAME = environ.get("BOT_USERNAME", "Botko_Movie_downloader_bot")
 
 # info.py
 POST_CHANNEL_ID = -1002589776901  # তুমি যে চ্যানেলে /postlist দিয়ে পোস্ট করতে চাও
