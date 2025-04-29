@@ -1,6 +1,6 @@
 import re
 from pyrogram import Client, filters
-from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from database.today_movies_db import get_today_movies, clear_today_movies
 
 POST_CHANNEL_ID = -1002507577541  # Your post channel ID
@@ -29,7 +29,7 @@ async def list_today_movies(client, message):
         movie_title = remove_usernames_from_title(movie_title)
         movie_title = replace_underscore_with_space(movie_title)
 
-        movie_list += f"**{idx}.** 🎯 {movie_title}\n\n"
+        movie_list += f"**{idx}.** 🎯 `{movie_title}`\n\n"  # Added Mono font style
 
     await message.reply(
         f"**🎉 Today's Movie List:**\n\n{movie_list}",
@@ -45,22 +45,22 @@ async def post_today_movies(client, message):
         return
 
     movie_list = ""
+    buttons = []  # To hold the buttons for inline keyboard
     for idx, movie in enumerate(movies, start=1):
         movie_title = movie['title']
         movie_title = remove_usernames_from_title(movie_title)
         movie_title = replace_underscore_with_space(movie_title)
 
-        movie_list += f"**{idx}.** 🎯 {movie_title}\n\n"
+        # Creating the inline button for each movie title
+        button = InlineKeyboardButton(
+            text=f"🎯 `{movie_title}`",  # Added Mono font style to button text
+            callback_data=f"copy_{movie_title}"  # Attach movie title in callback_data
+        )
+        buttons.append([button])  # Add button to buttons list
 
-    # Inline buttons
-    buttons = [
-        [
-            InlineKeyboardButton("🎬 Get Now", url="https://t.me/MovieDownload6G_bot"),
-            InlineKeyboardButton("🎯 Join Now", url="https://t.me/Movie_channel8")
-        ]
-    ]
+        movie_list += f"**{idx}.** `{movie_title}`\n"  # Added Mono font style
 
-    # First send the message in channel with photo
+    # First send the message in channel with photo and Mono font style for movie titles
     await client.send_photo(
         POST_CHANNEL_ID,
         photo=POST_IMAGE_URL,
