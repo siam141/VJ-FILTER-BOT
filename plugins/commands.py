@@ -408,6 +408,22 @@ async def start(client, message):
         await asyncio.sleep(300)
         await k.edit("<b>✅ ʏᴏᴜʀ ᴍᴇssᴀɢᴇ ɪs sᴜᴄᴄᴇssғᴜʟʟʏ ᴅᴇʟᴇᴛᴇᴅ</b>")
         return
+    elif data.startswith("files"):
+    user = message.from_user.id
+    file_id = data.split("_", 1)[1]  # ধরছি data = "files_123456"
+
+    chat_id = temp.SHORT.get(user)
+    if chat_id is None:
+        # fallback লিংক তৈরি করা হচ্ছে
+        pre = "file"  # নরমাল বা ডিফল্ট fallback প্রিফিক্স
+        g = await get_shortlink(user, f"https://telegram.me/{temp.U_NAME}?start={pre}_{file_id}")
+        await message.reply_text(
+            text="**❌ আপনার অনুরোধটি পাওয়া যায়নি। দয়া করে আবার গ্রুপে গিয়ে সার্চ করুন।**",
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("🔁 আবার সার্চ করুন", url=g)]]
+            )
+        )
+        return
         
     
     elif data.startswith("short"):
