@@ -408,21 +408,18 @@ async def start(client, message):
         await asyncio.sleep(300)
         await k.edit("<b>✅ ʏᴏᴜʀ ᴍᴇssᴀɢᴇ ɪs sᴜᴄᴄᴇssғᴜʟʟʏ ᴅᴇʟᴇᴛᴇᴅ</b>")
         return
-    elif data.startswith("files"):
-    user = message.from_user.id
-    file_id = data.split("_", 1)[1]
-    chat_id = temp.SHORT.get(user)
-
-    if chat_id is None:
-        pre = "file"
-        g = await get_shortlink(user, f"https://telegram.me/{temp.U_NAME}?start={pre}_{file_id}")
-        await message.reply_text(
-            text="<b>❌ আপনার অনুরোধটি খুঁজে পাওয়া যায়নি!\n\nঅনুগ্রহ করে আবার গ্রুপে গিয়ে সার্চ করুন।</b>",
-            reply_markup=InlineKeyboardMarkup(
-                [[InlineKeyboardButton("🔁 গ্রুপে আবার সার্চ করুন", url=g)]]
-            )
-        )
-        return
+    elif data.startswith("short"):
+        user = message.from_user.id
+        chat_id = temp.SHORT.get(user)
+        settings = await get_settings(chat_id)
+        pre = 'filep' if settings['file_secure'] else 'file'
+        g = await get_shortlink(chat_id, f"https://telegram.me/{temp.U_NAME}?start={pre}_{file_id}")
+        btn = [[
+            InlineKeyboardButton('ᴅᴏᴡɴʟᴏᴀᴅ ɴᴏᴡ', url=g)
+        ]]
+        if settings['tutorial']:
+            btn.append([InlineKeyboardButton('ʜᴏᴡ ᴛᴏ ᴅᴏᴡɴʟᴏᴀᴅ', url=await get_tutorial(chat_id))])
+        text = "<b>✅ ʏᴏᴜʀ ғɪʟᴇ ʀᴇᴀᴅʏ ᴄʟɪᴄᴋ ᴏɴ ᴅᴏᴡɴʟᴏᴀᴅ ɴᴏᴡ ʙᴜᴛᴛᴏɴ ᴛʜᴇɴ ᴏᴘᴇɴ ʟɪɴᴋ ᴛᴏ ɢᴇᴛ ғɪʟᴇ\n\n</b>"
         
     
     elif data.startswith("short"):
