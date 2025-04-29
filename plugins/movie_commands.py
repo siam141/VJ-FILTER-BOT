@@ -1,40 +1,46 @@
 import re
 from pyrogram import Client, filters
-from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto, CallbackQuery
 from database.today_movies_db import get_today_movies, clear_today_movies
 
 POST_CHANNEL_ID = -1002507577541  # Your post channel ID
 ADMIN_ID = 7862181538  # Your admin ID
 POST_IMAGE_URL = "https://i.ibb.co/21RKmKDG/file-1485.jpg"  # Image URL to post
+MOVIES_PER_PAGE = 5
 
 def remove_usernames_from_title(title: str) -> str:
-    # Remove @username from title
     return re.sub(r'@[\w_]+', '', title).strip()
 
 def replace_underscore_with_space(title: str) -> str:
-    # Replace underscores with spaces
     return title.replace("_", " ")
 
-@Client.on_message(filters.command("listtoday"))
-async def list_today_movies(client, message):
-    movies = await get_today_movies()
-
-    if not movies:
-        await message.reply("🚫 No movies found for today!")
-        return
-
+def create_movie_list(movies, page=0):
+    start = page * MOVIES_PER_PAGE
+    end = start + MOVIES_PER_PAGE
     movie_list = ""
-    for idx, movie in enumerate(movies, start=1):
-        movie_title = movie['title']
-        movie_title = remove_usernames_from_title(movie_title)
+    for idx, movie in enumerate(movies[start:end], start=start+1):
+        movie_title = remove_usernames_from_title(movie['title'])
         movie_title = replace_underscore_with_space(movie_title)
+        movie_list += f"**{idx}.** 🎯 {movie_title}\n\n"
+    return movie_list
 
-        movie_list += f"**{idx}.** 🎯 `{movie_title}`\n\n"  # Mono font style for movie title
+def create_buttons(total_movies, page):
+    buttons = []
+    navigation_buttons = []
 
-    await message.reply(
-        f"**🎉 Today's Movie List:**\n\n{movie_list}",
-        quote=True
-    )
+    max_page = (total_movies - 1) // MOVIES_PER_PAGE
+
+    if page > 0:
+        navigation_buttons.append(InlineKeyboardButton("⬅️ Previous", callback_data=f"prev_{page}"))
+    if page < max_page:
+        navigation_buttons.append(InlineKeyboardButton("Next ➡️", callback_data=f"next_{page}"))
+    
+    if navigation_buttons:
+        buttons.append(navigation_buttons)
+
+    buttons.append([InlineKeyboardButton("🎬 Get Now", url="https://t.me/MovieDownload6G_bot")])
+
+    return InlineKeyboardMarkup(buttons)
 
 @Client.on_message(filters.command("postlist") & filters.user(ADMIN_ID))
 async def post_today_movies(client, message):
@@ -44,33 +50,41 @@ async def post_today_movies(client, message):
         await message.reply("🚫 No movies available to post today!")
         return
 
-    movie_list = ""
-    buttons = []  # To hold the buttons for inline keyboard
+    movie_list = create_movie_list(movies, page=0)
+    buttons = create_buttons(len(movies), page=0)
 
-    for idx, movie in enumerate(movies, start=1):
-        movie_title = movie['title']
-        movie_title = remove_usernames_from_title(movie_title)
-        movie_title = replace_underscore_with_space(movie_title)
-
-        # Add Mono font style to inline button text
-        button = InlineKeyboardButton(
-            text=f"🎯 `{movie_title}`",  # Mono font style for inline button
-            callback_data=f"copy_{movie_title}"  # Attach movie title in callback_data
-        )
-        buttons.append([button])  # Add button to buttons list
-
-        movie_list += f"**{idx}.** `{movie_title}`\n"  # Mono font style for movie list
-
-    # Send the message in channel with photo and Mono font style for movie titles
-    await client.send_photo(
+    sent = await client.send_photo(
         POST_CHANNEL_ID,
         photo=POST_IMAGE_URL,
         caption=f"**🎉 Today's Movie List:**\n\n{movie_list}",
-        reply_markup=InlineKeyboardMarkup(buttons)  # Add buttons here
+        reply_markup=buttons
     )
 
-    # Notify admin
     await message.reply("✅ Successfully posted today's movie list in the channel!")
+
+@Client.on_callback_query(filters.regex(r'^(next|prev)_\d+$'))
+async def paginate_movies(client, query: CallbackQuery):
+    action, current_page = query.data.split("_")
+    current_page = int(current_page)
+    
+    movies = await get_today_movies()
+    total_movies = len(movies)
+
+    if action == "next":
+        page = current_page + 1
+    else:
+        page = current_page - 1
+
+    movie_list = create_movie_list(movies, page)
+    buttons = create_buttons(total_movies, page)
+
+    try:
+        await query.message.edit_caption(
+            caption=f"**🎉 Today's Movie List:**\n\n{movie_list}",
+            reply_markup=buttons
+        )
+    except Exception as e:
+        await query.answer("Something went wrong!", show_alert=True)
 
 @Client.on_message(filters.command("clear_today_list") & filters.user(ADMIN_ID))
 async def clear_today_movie_list(client, message):
