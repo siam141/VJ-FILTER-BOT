@@ -281,132 +281,137 @@ async def cancel_request(client: Client, message: Message):
 
 
 
-
-
-
 from pyrogram import Client, filters
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 import requests
 
-# Replace these with your actual values
-TMDB_API_KEY = "c3443ed2f96cd615e3badf6b68c8a689"  # তোমার TMDb API কী
-POST_CHANNEL_ID = -1002589776901    # তোমার চ্যানেল আইডি
+TMDB_API_KEY = "c3443ed2f96cd615e3badf6b68c8a689"
+POST_CHANNEL_ID = -1002589776901
 
-# Session Data Store
-movie_data = {}
+movie_sessions = {}
 
-# Start Command
-@Client.on_message(filters.command("start") & filters.private)
-async def start_command(client, message: Message):
-    await message.reply_text("Hi! I'm your movie bot. Use /share_movie to start sharing a movie or series.")
-
-# Help Command (optional)
-@Client.on_message(filters.command("help") & filters.private)
-async def help_command(client, message: Message):
-    await message.reply_text("Use /share_movie to begin movie sharing.\n\n1. Send movie/series name.\n2. Choose from results.\n3. Send your share link.\n\nI will post it with image and button!")
-
-# Share Movie Command
+# /share_movie command
 @Client.on_message(filters.command("share_movie") & filters.private)
-async def start_share_movie(client, message: Message):
-    await message.reply_text("Please send your movie or series name:")
-    movie_data[message.from_user.id] = {"step": "ask_name"}
+async def share_movie(client, message: Message):
+    if len(message.command) < 2:
+        return await message.reply("Usage: `/share_movie Movie Name`", quote=True)
 
-# Handle text inputs (excluding commands)
-@Client.on_message(filters.text & filters.private & ~filters.command(["start", "help", "share_movie"]))
-async def handle_text(client, message: Message):
-    user_id = message.from_user.id
-    if user_id not in movie_data:
-        return
+    query = " ".join(message.command[1:])
+    url = f"https://api.themoviedb.org/3/search/multi?api_key={TMDB_API_KEY}&query={query}"
+    response = requests.get(url).json()
+    results = response.get("results", [])
 
-    step = movie_data[user_id].get("step")
+    if not results:
+        return await message.reply("No results found.")
 
-    if step == "ask_name":
-        query = message.text
-        url = f"https://api.themoviedb.org/3/search/multi?api_key={TMDB_API_KEY}&query={query}"
-        response = requests.get(url).json()
-        results = response.get("results", [])
+    movie_sessions[message.from_user.id] = {
+        "results": results,
+        "page": 0,
+    }
 
-        if not results:
-            movie_data.pop(user_id, None)
-            return await message.reply("No results found.")
+    await show_movie_result(client, message.chat.id, message.from_user.id)
 
-        movie_data[user_id].update({
-            "step": "select_movie",
-            "results": results,
-            "page": 0
-        })
-        await show_result(client, message.chat.id, user_id)
 
-    elif step == "ask_link":
-        link = message.text.strip()
-        if not link.startswith("http"):
-            return await message.reply("Please send a valid URL starting with http or https.")
-
-        selected = movie_data[user_id]["results"][movie_data[user_id]["page"]]
-        title = selected.get("title") or selected.get("name")
-        poster = selected.get("poster_path")
-        poster_url = f"https://image.tmdb.org/t/p/w500{poster}" if poster else None
-
-        caption = f"**{title}**\n\nClick the button below to watch/download."
-        buttons = InlineKeyboardMarkup([[InlineKeyboardButton("🎬 Get Now", url=link)]])
-
-        if poster_url:
-            await client.send_photo(POST_CHANNEL_ID, poster_url, caption=caption, reply_markup=buttons)
-        else:
-            await client.send_message(POST_CHANNEL_ID, caption, reply_markup=buttons)
-
-        await message.reply("✅ Movie post has been shared to your channel.")
-        movie_data.pop(user_id, None)
-
-# Show one result with buttons
-async def show_result(client, chat_id, user_id):
-    data = movie_data[user_id]
+# Show paginated result
+async def show_movie_result(client, chat_id, user_id):
+    data = movie_sessions[user_id]
     page = data["page"]
     result = data["results"][page]
+
     title = result.get("title") or result.get("name")
     year = result.get("release_date", "N/A")[:4]
     overview = result.get("overview", "No description available.")
-    poster = result.get("poster_path")
-    poster_url = f"https://image.tmdb.org/t/p/w500{poster}" if poster else None
+    poster_path = result.get("poster_path")
+    poster_url = f"https://image.tmdb.org/t/p/w500{poster_path}" if poster_path else None
 
     caption = f"**{title} ({year})**\n\n{overview}"
+
     buttons = [
         [
-            InlineKeyboardButton("⬅️ Prev", callback_data="prev"),
-            InlineKeyboardButton("➡️ Next", callback_data="next")
+            InlineKeyboardButton("⬅️ Prev", callback_data="prev_movie"),
+            InlineKeyboardButton("➡️ Next", callback_data="next_movie"),
         ],
-        [InlineKeyboardButton("✅ Select", callback_data="select")]
+        [InlineKeyboardButton("✅ Select", callback_data="select_movie")]
     ]
 
     if poster_url:
-        await client.send_photo(chat_id, poster_url, caption=caption, reply_markup=InlineKeyboardMarkup(buttons))
+        await client.send_photo(chat_id, poster=poster_url, caption=caption, reply_markup=InlineKeyboardMarkup(buttons))
     else:
-        await client.send_message(chat_id, caption, reply_markup=InlineKeyboardMarkup(buttons))
+        await client.send_message(chat_id, caption=caption, reply_markup=InlineKeyboardMarkup(buttons))
 
-# Handle button callbacks
-@Client.on_callback_query(filters.regex("^(prev|next|select)$"))
-async def handle_pagination(client, callback_query: CallbackQuery):
+
+# Handle pagination/select button
+@Client.on_callback_query(filters.regex("^(prev_movie|next_movie|select_movie)$"))
+async def handle_movie_callback(client, callback_query: CallbackQuery):
     user_id = callback_query.from_user.id
-    data = movie_data.get(user_id)
-    if not data:
-        return await callback_query.answer("Session expired. Please try /share_movie again.", show_alert=True)
+    data = movie_sessions.get(user_id)
 
-    if callback_query.data == "prev":
+    if not data:
+        return await callback_query.answer("No movie session found.", show_alert=True)
+
+    if callback_query.data == "prev_movie":
         if data["page"] > 0:
             data["page"] -= 1
-        await callback_query.message.delete()
-        await show_result(client, callback_query.message.chat.id, user_id)
 
-    elif callback_query.data == "next":
+    elif callback_query.data == "next_movie":
         if data["page"] < len(data["results"]) - 1:
             data["page"] += 1
-        await callback_query.message.delete()
-        await show_result(client, callback_query.message.chat.id, user_id)
 
-    elif callback_query.data == "select":
-        movie_data[user_id]["step"] = "ask_link"
-        await callback_query.message.delete()
-        await callback_query.message.reply_text("Please send your shareable link.")
+    elif callback_query.data == "select_movie":
+        await callback_query.message.reply("Movie selected! Now use `/link_movie <your_link>` to publish.")
+        return await callback_query.answer("Movie selected!")
+
+    await callback_query.message.delete()
+    await show_movie_result(client, callback_query.message.chat.id, user_id)
+
+
+# /link_movie command
+@Client.on_message(filters.command("link_movie") & filters.private)
+async def link_movie(client, message: Message):
+    user_id = message.from_user.id
+
+    if user_id not in movie_sessions:
+        return await message.reply("Please search a movie first using `/share_movie`", quote=True)
+
+    if len(message.command) < 2:
+        return await message.reply("Usage: `/link_movie https://yourlink.com`", quote=True)
+
+    link = message.command[1]
+    selected = movie_sessions[user_id]["results"][movie_sessions[user_id]["page"]]
+    title = selected.get("title") or selected.get("name")
+    year = selected.get("release_date", "N/A")[:4]
+    overview = selected.get("overview", "No description available.")
+    poster_path = selected.get("poster_path")
+    poster_url = f"https://image.tmdb.org/t/p/w500{poster_path}" if poster_path else None
+
+    caption = f"**{title} ({year})**\n\n{overview}"
+    buttons = InlineKeyboardMarkup([[InlineKeyboardButton("🎬 Get Now", url=link)]])
+
+    if poster_url:
+        await client.send_photo(POST_CHANNEL_ID, poster=poster_url, caption=caption, reply_markup=buttons)
+    else:
+        await client.send_message(POST_CHANNEL_ID, caption=caption, reply_markup=buttons)
+
+    await message.reply("✅ Your movie has been shared.")
+    movie_sessions.pop(user_id, None)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
