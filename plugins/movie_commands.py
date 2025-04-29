@@ -92,6 +92,8 @@ async def post_today_movies(client, message):
         reply_markup=reply_markup
     )
 
+    await message.reply("✅ Movie list has been successfully posted to the channel!")
+
 @Client.on_callback_query(filters.regex("^(next|prev)_"))
 async def paginate_movies(client, callback_query):
     data = callback_query.data
