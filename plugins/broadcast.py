@@ -293,11 +293,10 @@ from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, 
 import requests
 
 # Configurations (Replace these)
-TMDB_API_KEY = "c3443ed2f96cd615e3badf6b68c8a689"
-POST_CHANNEL_ID = 1002589776901  # তোমার চ্যানেল আইডি এখানে বসাও
+TMDB_API_KEY = "c3443ed2f96cd615e3badf6b68c8a689"  # এখানে তোমার TMDB API KEY বসাও
+POST_CHANNEL_ID = -1002589776901    # এখানে তোমার চ্যানেল আইডি বসাও
 
-
-# User session dict
+# In-memory user session dict
 movie_data = {}
 
 @Client.on_message(filters.command("share_movie") & filters.private)
@@ -311,7 +310,7 @@ async def handle_text(client, message: Message):
     if user_id not in movie_data:
         return
 
-    step = movie_data[user_id]["step"]
+    step = movie_data[user_id].get("step")
 
     if step == "ask_name":
         query = message.text
@@ -320,6 +319,7 @@ async def handle_text(client, message: Message):
         results = response.get("results", [])
 
         if not results:
+            movie_data.pop(user_id, None)
             return await message.reply("No results found.")
 
         movie_data[user_id].update({
@@ -330,7 +330,10 @@ async def handle_text(client, message: Message):
         await show_result(client, message.chat.id, user_id)
 
     elif step == "ask_link":
-        link = message.text
+        link = message.text.strip()
+        if not link.startswith("http"):
+            return await message.reply("Please send a valid URL starting with http or https.")
+
         selected = movie_data[user_id]["results"][movie_data[user_id]["page"]]
         title = selected.get("title") or selected.get("name")
         poster = selected.get("poster_path")
@@ -344,7 +347,7 @@ async def handle_text(client, message: Message):
         else:
             await client.send_message(POST_CHANNEL_ID, caption, reply_markup=buttons)
 
-        await message.reply("Movie post has been shared to the channel.")
+        await message.reply("✅ Movie post has been shared to your channel.")
         movie_data.pop(user_id, None)
 
 async def show_result(client, chat_id, user_id):
@@ -376,7 +379,7 @@ async def handle_pagination(client, callback_query: CallbackQuery):
     user_id = callback_query.from_user.id
     data = movie_data.get(user_id)
     if not data:
-        return await callback_query.answer("Session expired.", show_alert=True)
+        return await callback_query.answer("Session expired. Please try /share_movie again.", show_alert=True)
 
     if callback_query.data == "prev":
         if data["page"] > 0:
@@ -394,7 +397,6 @@ async def handle_pagination(client, callback_query: CallbackQuery):
         movie_data[user_id]["step"] = "ask_link"
         await callback_query.message.delete()
         await callback_query.message.reply_text("Please send your shareable link.")
-
 
 
 
