@@ -1,27 +1,54 @@
 from pyrogram import Client, filters
-from pyrogram.types import Message
-from info import ADMINS, BOT_USERNAME
-from database.movies import add_movie_entry, get_movie_by_id
+from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
+from database.file_store_db import save_file, get_file_by_key
+import random, string
 
-# ✅ /savemovie (রিপ্লাই করা মুভি সেভ করে ডাটাবেজে)
-@Client.on_message(filters.command("savemovie") & filters.user(ADMINS) & filters.reply)
-async def save_movie_handler(client, message: Message):
+def generate_key(length=10):
+    return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
+
+@Client.on_message(filters.command("link") & filters.reply)
+async def single_link_handler(bot, message: Message):
     reply = message.reply_to_message
-    file_name = reply.caption or "Untitled Movie"
-    await add_movie_entry(reply.id, reply.chat.id, file_name)
-    await message.reply_text("✅ মুভি সফলভাবে ডাটাবেজে সেভ হয়েছে।")
+    if not (reply.document or reply.video or reply.audio):
+        return await message.reply("Please reply to a valid media file.")
 
-# ✅ /getlink (মুভির ইউনিক লিংক তৈরি করে)
-@Client.on_message(filters.command("getlink") & filters.user(ADMINS))
-async def get_link_handler(client, message: Message):
-    if len(message.command) < 2:
-        return await message.reply("Usage: /getlink <message_id>")
-    
-    msg_id = int(message.command[1])
-    movie = await get_movie_by_id(msg_id)
-    
-    if not movie:
-        return await message.reply("❌ ডাটাবেজে মুভিটি খুঁজে পাওয়া যায়নি।")
-    
-    link = f"https://t.me/{BOT_USERNAME}?start=movie_{msg_id}"
-    await message.reply_text(f"🎬 **{movie['file_name']}**\n\n🔗 শেয়ার লিংক:\n{link}")
+    key = generate_key()
+    await save_file(key, reply, forward_restricted=False)
+
+    link = f"https://t.me/{bot.username}?start={key}"
+    await message.reply(f"Here is your sharable link:\n`{link}`")
+
+@Client.on_message(filters.command("plink") & filters.reply)
+async def single_plink_handler(bot, message: Message):
+    reply = message.reply_to_message
+    if not (reply.document or reply.video or reply.audio):
+        return await message.reply("Please reply to a valid media file.")
+
+    key = generate_key()
+    await save_file(key, reply, forward_restricted=True)
+
+    link = f"https://t.me/{bot.username}?start={key}"
+    await message.reply(f"Here is your **Protected Link**:\n`{link}`")
+
+@Client.on_message(filters.command("start") & filters.private)
+async def serve_stored_file(bot, message: Message):
+    args = message.text.split()
+    if len(args) == 2:
+        key = args[1]
+        data = await get_file_by_key(key)
+        if not data:
+            return await message.reply("Invalid or expired file link.")
+        
+        if data.get("forward_restricted"):
+            await bot.forward_messages(
+                chat_id=message.chat.id,
+                from_chat_id=data['chat_id'],
+                message_ids=data['message_id'],
+                disable_notification=True
+            )
+        else:
+            await bot.copy_message(
+                chat_id=message.chat.id,
+                from_chat_id=data['chat_id'],
+                message_id=data['message_id']
+            )
