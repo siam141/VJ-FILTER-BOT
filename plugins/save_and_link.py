@@ -3,8 +3,9 @@ from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, 
 import requests
 
 # Configurations (Replace these)
-TMDB_API_KEY = "YOUR_TMDB_API_KEY"
+TMDB_API_KEY = "c3443ed2f96cd615e3badf6b68c8a689"
 POST_CHANNEL_ID = -1001234567890  # তোমার চ্যানেল আইডি এখানে বসাও
+
 
 # User session dict
 movie_data = {}
