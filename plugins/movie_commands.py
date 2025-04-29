@@ -1,12 +1,13 @@
 import re
 from pyrogram import Client, filters
-from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto, CallbackQuery
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
 from database.today_movies_db import get_today_movies, clear_today_movies
 
 POST_CHANNEL_ID = -1002507577541  # Your post channel ID
 ADMIN_ID = 7862181538  # Your admin ID
 POST_IMAGE_URL = "https://i.ibb.co/21RKmKDG/file-1485.jpg"  # Image URL to post
-MOVIES_PER_PAGE = 5
+
+MOVIES_PER_PAGE = 5  # প্রতি পেজে ৫ টা মুভি দেখাবে
 
 def remove_usernames_from_title(title: str) -> str:
     return re.sub(r'@[\w_]+', '', title).strip()
@@ -19,28 +20,47 @@ def create_movie_list(movies, page=0):
     end = start + MOVIES_PER_PAGE
     movie_list = ""
     for idx, movie in enumerate(movies[start:end], start=start+1):
-        movie_title = remove_usernames_from_title(movie['title'])
+        movie_title = movie['title']
+        movie_title = remove_usernames_from_title(movie_title)
         movie_title = replace_underscore_with_space(movie_title)
-        movie_list += f"**{idx}.** 🎯 {movie_title}\n\n"
+        movie_list += f"**{idx}.** 🎯 ` {movie_title} `\n\n"  # Monotext format
     return movie_list
 
-def create_buttons(total_movies, page):
+def get_buttons(total_movies, current_page):
+    total_pages = (total_movies + MOVIES_PER_PAGE - 1) // MOVIES_PER_PAGE
     buttons = []
-    navigation_buttons = []
 
-    max_page = (total_movies - 1) // MOVIES_PER_PAGE
+    nav_buttons = []
+    if current_page > 0:
+        nav_buttons.append(InlineKeyboardButton("⬅️ Previous", callback_data=f"prev_{current_page}"))
+    if (current_page + 1) < total_pages:
+        nav_buttons.append(InlineKeyboardButton("➡️ Next", callback_data=f"next_{current_page}"))
 
-    if page > 0:
-        navigation_buttons.append(InlineKeyboardButton("⬅️ Previous", callback_data=f"prev_{page}"))
-    if page < max_page:
-        navigation_buttons.append(InlineKeyboardButton("Next ➡️", callback_data=f"next_{page}"))
-    
-    if navigation_buttons:
-        buttons.append(navigation_buttons)
+    if nav_buttons:
+        buttons.append(nav_buttons)
 
-    buttons.append([InlineKeyboardButton("🎬 Get Now", url="https://t.me/MovieDownload6G_bot")])
+    # Always add "Get Now" button at the bottom
+    buttons.append([
+        InlineKeyboardButton("🎬 Get Now", url="https://t.me/MovieDownload6G_bot"),
+        InlineKeyboardButton("🎯 Join Now", url="https://t.me/Movie_channel8")
+    ])
 
     return InlineKeyboardMarkup(buttons)
+
+@Client.on_message(filters.command("listtoday"))
+async def list_today_movies(client, message):
+    movies = await get_today_movies()
+
+    if not movies:
+        await message.reply("🚫 No movies found for today!")
+        return
+
+    movie_list = create_movie_list(movies)
+
+    await message.reply(
+        f"**🎉 Today's Movie List:**\n\n{movie_list}",
+        quote=True
+    )
 
 @Client.on_message(filters.command("postlist") & filters.user(ADMIN_ID))
 async def post_today_movies(client, message):
@@ -51,40 +71,48 @@ async def post_today_movies(client, message):
         return
 
     movie_list = create_movie_list(movies, page=0)
-    buttons = create_buttons(len(movies), page=0)
+    reply_markup = get_buttons(len(movies), current_page=0)
 
-    sent = await client.send_photo(
+    # Send the message with photo in channel
+    sent_message = await client.send_photo(
         POST_CHANNEL_ID,
         photo=POST_IMAGE_URL,
         caption=f"**🎉 Today's Movie List:**\n\n{movie_list}",
-        reply_markup=buttons
+        reply_markup=reply_markup
     )
 
-    await message.reply("✅ Successfully posted today's movie list in the channel!")
-
-@Client.on_callback_query(filters.regex(r'^(next|prev)_\d+$'))
-async def paginate_movies(client, query: CallbackQuery):
-    action, current_page = query.data.split("_")
-    current_page = int(current_page)
-    
-    movies = await get_today_movies()
-    total_movies = len(movies)
+@Client.on_callback_query(filters.regex("^(next|prev)_"))
+async def paginate_movies(client, callback_query):
+    data = callback_query.data
+    action, page = data.split("_")
+    page = int(page)
 
     if action == "next":
-        page = current_page + 1
+        new_page = page + 1
     else:
-        page = current_page - 1
+        new_page = page - 1
 
-    movie_list = create_movie_list(movies, page)
-    buttons = create_buttons(total_movies, page)
+    movies = await get_today_movies()
 
+    if not movies:
+        await callback_query.answer("No movies available!", show_alert=True)
+        return
+
+    if new_page < 0 or new_page * MOVIES_PER_PAGE >= len(movies):
+        await callback_query.answer("No more movies!", show_alert=True)
+        return
+
+    movie_list = create_movie_list(movies, page=new_page)
+    reply_markup = get_buttons(len(movies), current_page=new_page)
+
+    # Edit message
     try:
-        await query.message.edit_caption(
+        await callback_query.message.edit_caption(
             caption=f"**🎉 Today's Movie List:**\n\n{movie_list}",
-            reply_markup=buttons
+            reply_markup=reply_markup
         )
     except Exception as e:
-        await query.answer("Something went wrong!", show_alert=True)
+        await callback_query.answer(f"Error: {e}", show_alert=True)
 
 @Client.on_message(filters.command("clear_today_list") & filters.user(ADMIN_ID))
 async def clear_today_movie_list(client, message):
