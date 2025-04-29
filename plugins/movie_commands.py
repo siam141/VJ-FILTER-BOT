@@ -29,7 +29,7 @@ async def list_today_movies(client, message):
         movie_title = remove_usernames_from_title(movie_title)
         movie_title = replace_underscore_with_space(movie_title)
 
-        movie_list += f"**{idx}.** 🎯 `{movie_title}`\n\n"  # Added Mono font style
+        movie_list += f"**{idx}.** 🎯 `{movie_title}`\n\n"  # Mono font style for movie title
 
     await message.reply(
         f"**🎉 Today's Movie List:**\n\n{movie_list}",
@@ -46,26 +46,27 @@ async def post_today_movies(client, message):
 
     movie_list = ""
     buttons = []  # To hold the buttons for inline keyboard
+
     for idx, movie in enumerate(movies, start=1):
         movie_title = movie['title']
         movie_title = remove_usernames_from_title(movie_title)
         movie_title = replace_underscore_with_space(movie_title)
 
-        # Creating the inline button for each movie title
+        # Add Mono font style to inline button text
         button = InlineKeyboardButton(
-            text=f"🎯 `{movie_title}`",  # Added Mono font style to button text
+            text=f"🎯 `{movie_title}`",  # Mono font style for inline button
             callback_data=f"copy_{movie_title}"  # Attach movie title in callback_data
         )
         buttons.append([button])  # Add button to buttons list
 
-        movie_list += f"**{idx}.** `{movie_title}`\n"  # Added Mono font style
+        movie_list += f"**{idx}.** `{movie_title}`\n"  # Mono font style for movie list
 
-    # First send the message in channel with photo and Mono font style for movie titles
+    # Send the message in channel with photo and Mono font style for movie titles
     await client.send_photo(
         POST_CHANNEL_ID,
         photo=POST_IMAGE_URL,
         caption=f"**🎉 Today's Movie List:**\n\n{movie_list}",
-        reply_markup=InlineKeyboardMarkup(buttons)
+        reply_markup=InlineKeyboardMarkup(buttons)  # Add buttons here
     )
 
     # Notify admin
