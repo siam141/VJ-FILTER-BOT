@@ -412,13 +412,14 @@ async def start(client, message):
     user = message.from_user.id
     file_id = data.split("_", 1)[1]
     chat_id = temp.SHORT.get(user)
+
     if chat_id is None:
         pre = "file"
         g = await get_shortlink(user, f"https://telegram.me/{temp.U_NAME}?start={pre}_{file_id}")
         await message.reply_text(
-            text="**❌ আপনার অনুরোধটি পাওয়া যায়নি। দয়া করে আবার গ্রুপে গিয়ে সার্চ করুন।**",
+            text="<b>❌ আপনার অনুরোধটি খুঁজে পাওয়া যায়নি!\n\nঅনুগ্রহ করে আবার গ্রুপে গিয়ে সার্চ করুন।</b>",
             reply_markup=InlineKeyboardMarkup(
-                [[InlineKeyboardButton("🔁 আবার সার্চ করুন", url=g)]]
+                [[InlineKeyboardButton("🔁 গ্রুপে আবার সার্চ করুন", url=g)]]
             )
         )
         return
