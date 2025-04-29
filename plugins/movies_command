@@ -1,237 +1,77 @@
-import requests
+import re
 from pyrogram import Client, filters
-from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from pyrogram.errors import FloodWait
-ADMIN_ID = 7862181538  # আপনার আসল অ্যাডমিন আইডি দিয়ে পরিবর্তন করুন
-TMDB_API_KEY = "c3443ed2f96cd615e3badf6b68c8a689"  # Replace with your TMDB API key
-POST_CHANNEL_ID = -1002589776901  # Your default post channel ID (you can change this)
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
+from database.today_movies_db import get_today_movies, clear_today_movies
 
-def search_tmdb_movies(query: str):
-    """Search TMDB API for movies and TV series based on the query."""
-    url = f"https://api.themoviedb.org/3/search/multi?api_key={TMDB_API_KEY}&query={query}"
-    response = requests.get(url)
-    return response.json()
+POST_CHANNEL_ID = -1002507577541  # Your post channel ID
+ADMIN_ID = 7862181538  # Your admin ID
+POST_IMAGE_URL = "https://i.ibb.co/21RKmKDG/file-1485.jpg"  # Image URL to post
 
-@Client.on_message(filters.command("post_movie_poster"))
-async def post_movie_poster(client, message):
-    # Extract the movie or series name from the command
-    query = " ".join(message.command[1:])
+def remove_usernames_from_title(title: str) -> str:
+    # Remove @username from title
+    return re.sub(r'@[\w_]+', '', title).strip()
 
-    if not query:
-        await message.reply("❌ Please provide a movie or series name!")
-        return
+def replace_underscore_with_space(title: str) -> str:
+    # Replace underscores with spaces
+    return title.replace("_", " ")
 
-    # Fetch the movies and series from TMDB API
-    results = search_tmdb_movies(query)
+@Client.on_message(filters.command("listtoday"))
+async def list_today_movies(client, message):
+    movies = await get_today_movies()
 
-    if not results.get('results'):
-        await message.reply("❌ No movies or series found with that name!")
-        return
+    if not movies:  
+        await message.reply("🚫 No movies found for today!")  
+        return  
 
-    # Build a list of movie/series results
-    buttons = []
-    movie_list = "**Found Movies/Series:**\n\n"
-    for idx, result in enumerate(results['results'], start=1):
-        title = result['name'] if result.get('name') else result['title']
-        poster_path = result.get('poster_path')
-        if poster_path:
-            poster_url = f"https://image.tmdb.org/t/p/w500{poster_path}"
-        else:
-            poster_url = "https://via.placeholder.com/500"  # Default image if no poster found
+    movie_list = ""  
+    for idx, movie in enumerate(movies, start=1):  
+        movie_title = movie['title']  
+        movie_title = remove_usernames_from_title(movie_title)  
+        movie_title = replace_underscore_with_space(movie_title)  
 
-        # Adding button for each result
-        movie_list += f"**{idx}.** {title}\n"
-        buttons.append([InlineKeyboardButton(f"Post Now: {title}", callback_data=f"post_{idx}_{poster_url}_{title}")])
+        movie_list += f"**{idx}.** 🎯 {movie_title}\n\n"  
 
-    # Send message with buttons to select movie/series to post
-    await message.reply(
-        movie_list,
-        reply_markup=InlineKeyboardMarkup(buttons)
+    await message.reply(  
+        f"**🎉 Today's Movie List:**\n\n{movie_list}",  
+        quote=True  
     )
 
-@Client.on_callback_query(filters.regex(r"^post_"))
-async def handle_post_button(client, callback_query):
-    # Extract movie/series details from callback data
-    callback_data = callback_query.data.split("_")
-    idx, poster_url, title = callback_data[1], callback_data[2], callback_data[3]
+@Client.on_message(filters.command("postlist") & filters.user(ADMIN_ID))
+async def post_today_movies(client, message):
+    movies = await get_today_movies()
 
-    # Ask the admin for the channel ID to post
-    await callback_query.answer("Please provide the channel ID where you'd like to post the movie/series!")
+    if not movies:  
+        await message.reply("🚫 No movies available to post today!")  
+        return  
 
-    await callback_query.message.reply(
-        f"🔴 **{title}**\n\nWould you like to post this movie/series with the poster below?",
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("Yes, Post It!", callback_data=f"confirm_post_{idx}_{poster_url}_{title}")],
-            [InlineKeyboardButton("Cancel", callback_data="cancel_post")]
-        ])
-    )
+    movie_list = ""  
+    for idx, movie in enumerate(movies, start=1):  
+        movie_title = movie['title']  
+        movie_title = remove_usernames_from_title(movie_title)  
+        movie_title = replace_underscore_with_space(movie_title)  
 
-@Client.on_callback_query(filters.regex(r"^confirm_post_"))
-async def confirm_post(client, callback_query):
-    # Extract details from callback data
-    callback_data = callback_query.data.split("_")
-    idx, poster_url, title = callback_data[1], callback_data[2], callback_data[3]
+        movie_list += f"**{idx}.** 🎯 {movie_title}\n\n"  
 
-    # Ask for the channel ID to post the movie
-    await callback_query.answer("Please provide the channel ID where you'd like to post the movie/series!")
+    # Inline buttons  
+    buttons = [  
+        [  
+            InlineKeyboardButton("🎬 Get Now", url="https://t.me/MovieDownload6G_bot"),  
+            InlineKeyboardButton("🎯 Join Now", url="https://t.me/Movie_channel8")  
+        ]  
+    ]  
 
-    # Ask the admin for the channel ID
-    await callback_query.message.reply(
-        f"Please provide the channel ID for posting **{title}**.\n\nYou can get the channel ID from the channel link (e.g., `@your_channel_name`)."
-    )
+    # First send the message in channel with photo  
+    await client.send_photo(  
+        POST_CHANNEL_ID,  
+        photo=POST_IMAGE_URL,  
+        caption=f"**🎉 Today's Movie List:**\n\n{movie_list}",  
+        reply_markup=InlineKeyboardMarkup(buttons)  
+    )  
 
-@Client.on_message(filters.text & filters.user(ADMIN_ID))
-async def post_to_channel(client, message):
-    # Get the movie or series title
-    if message.text.startswith("post_"):
-        # Example: post_1_123456_some_movie_name
-        data = message.text.split("_")
-        idx, poster_url, title = data[1], data[2], data[3]
+    # Notify admin  
+    await message.reply("✅ Successfully posted today's movie list in the channel!")
 
-        # Post message in the channel with movie poster and Get Now button
-        buttons = [
-            [
-                InlineKeyboardButton("Get Now", url=f"https://t.me/your_bot_link/{title}")
-            ]
-        ]
-
-        try:
-            await client.send_photo(
-                POST_CHANNEL_ID,
-                poster_url,
-                caption=f"🎬 **{title}**",
-                reply_markup=InlineKeyboardMarkup(buttons)
-            )
-            await message.reply(f"✅ Movie/Series **{title}** has been successfully posted!")
-        except FloodWait as e:
-            await message.reply(f"⏳ Please wait {e.x} seconds before posting again.")
-
-@Client.on_callback_query(filters.regex("cancel_post"))
-async def cancel_post(client, callback_query):
-    await callback_query.answer("Operation has been canceled.")
-    await callback_query.message.delete()
-
-
-
-
-
-import os
-import requests
-from pyrogram import Client, filters
-from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-
-# TMDb API Key এবং বট টোকেন
-TMDB_API_KEY = os.getenv("TMDB_API_KEY")  # Render/Koyeb প্ল্যাটফর্মে পরিবেশ ভেরিয়েবল ব্যবহার করা
-BOT_API_TOKEN = os.getenv("BOT_API_TOKEN")
-
-app = Client("movie_bot", bot_token=BOT_API_TOKEN)
-
-# TMDb API মাধ্যমে মুভি অনুসন্ধান
-def search_movie(query, page=1):
-    url = f"https://api.themoviedb.org/3/search/movie?api_key={TMDB_API_KEY}&query={query}&language=en-US&page={page}&include_adult=false"
-    response = requests.get(url).json()
-    return response['results'], response['total_pages']
-
-# চ্যানেলে মুভি পোস্ট করার জন্য একটি ফাংশন
-def post_movie_to_channel(channel_id, movie_id):
-    url = f"https://api.themoviedb.org/3/movie/{movie_id}?api_key={TMDB_API_KEY}&language=en-US"
-    response = requests.get(url).json()
-    movie_title = response['title']
-    movie_description = response['overview']
-    movie_image = f"https://image.tmdb.org/t/p/w500{response['poster_path']}"
-
-    # চ্যানেলে পোস্ট করতে হবে
-    app.send_photo(
-        chat_id=channel_id,
-        photo=movie_image,
-        caption=f"**{movie_title}**\n\n{movie_description}",
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("Watch Now", url=f"https://t.me/{app.username}")]
-        ])
-    )
-
-# /post_channel কমান্ড
-@app.on_message(filters.command("post_channel"))
-async def post_channel(client, message):
-    # চ্যানেল আইডি যাচাই করা
-    if len(message.command) < 2:
-        await message.reply("আপনার চ্যানেল আইডি প্রদান করুন /post_channel {channel id}")
-        return
-    
-    channel_id = message.command[1]
-    await message.reply("আপনি কোন মুভিটি পোস্ট করতে চান?")
-    
-    # মুভির নাম গ্রহণ করা
-    response = await client.listen(message.chat.id)
-    movie_name = response.text
-    
-    # TMDb API থেকে মুভি সার্চ করা
-    movies, total_pages = search_movie(movie_name)
-    
-    # যদি মুভি পাওয়া যায়
-    if movies:
-        current_page = 1  # শুরুতে প্রথম পেজ
-        keyboard = []
-        
-        def generate_keyboard(page):
-            # সার্চ রেজাল্টের জন্য কীবোর্ড তৈরি করা
-            movies, _ = search_movie(movie_name, page)
-            keyboard.clear()
-            
-            for i, movie in enumerate(movies[:5]):  # প্রথম 5টি মুভি দেখাবে
-                keyboard.append([InlineKeyboardButton(movie['title'], callback_data=f"movie_{movie['id']}")])
-            
-            # নেক্সট ও প্রিভিয়াস বাটন সহ
-            if page > 1:
-                keyboard.append([InlineKeyboardButton("Prev", callback_data=f"prev_{page}")])
-            if page < total_pages:
-                keyboard.append([InlineKeyboardButton("Next", callback_data=f"next_{page}")])
-            
-            return InlineKeyboardMarkup(keyboard)
-
-        # প্রথম পেজের কীবোর্ড তৈরি করা
-        markup = generate_keyboard(current_page)
-        await message.reply(
-            "মুভি নির্বাচন করুন:",
-            reply_markup=markup
-        )
-    else:
-        await message.reply("কোনো মুভি পাওয়া যায়নি, আবার চেষ্টা করুন।")
-
-@app.on_callback_query()
-async def callback_query(client, callback_query):
-    data = callback_query.data
-    channel_id = callback_query.message.chat.id
-    movie_id = None
-    current_page = 1
-    
-    # যদি মুভি সিলেক্ট করা হয়
-    if data.startswith("movie_"):
-        movie_id = data.split("_")[1]
-        # চ্যানেলে মুভি পোস্ট করা
-        await post_movie_to_channel(channel_id, movie_id)
-        await callback_query.answer("মুভি পোস্ট করা হয়েছে!")
-    
-    # Prev এবং Next বাটন হ্যান্ডলিং
-    elif data.startswith("prev_"):
-        current_page = int(data.split("_")[1]) - 1
-        movie_name = callback_query.message.text.split("\n")[0]  # মুভির নাম ধরছি
-        markup = generate_keyboard(current_page)
-        await callback_query.message.edit(
-            text="মুভি নির্বাচন করুন:",
-            reply_markup=markup
-        )
-        await callback_query.answer("Previous Page")
-    
-    elif data.startswith("next_"):
-        current_page = int(data.split("_")[1]) + 1
-        movie_name = callback_query.message.text.split("\n")[0]  # মুভির নাম ধরছি
-        markup = generate_keyboard(current_page)
-        await callback_query.message.edit(
-            text="মুভি নির্বাচন করুন:",
-            reply_markup=markup
-        )
-        await callback_query.answer("Next Page")
-
-# বট চালু করা
-app.run()
+@Client.on_message(filters.command("clear_today_list") & filters.user(ADMIN_ID))
+async def clear_today_movie_list(client, message):
+    await clear_today_movies()
+    await message.reply("✅ Today's movie list has been cleared successfully!")
